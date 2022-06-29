@@ -51,5 +51,14 @@
       "node": true,
       "es6": true,
       "jest/globals": true
-    }
+    },
+    "overrides": [
+      {
+        "files": ["**/*.test.ts"],
+        "rules": {
+          "filenames/match-regex": "off",
+          "no-console": "off"
+        }
+      }
+    ]
   }

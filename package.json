@@ -1,8 +1,7 @@
 {
-  "name": "typescript-action",
-  "version": "0.0.0",
-  "private": true,
-  "description": "TypeScript template action",
+  "name": "delta-action",
+  "version": "1.0.0",
+  "description": "Compute delta offenses for your pull requests",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
@@ -25,15 +24,15 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.6.0"
+    "@actions/core": "^1.9.0"
   },
   "devDependencies": {
     "@types/node": "^16.10.5",
     "@typescript-eslint/parser": "^5.8.1",
     "@vercel/ncc": "^0.31.1",
-    "eslint": "^7.32.0",
-    "eslint-plugin-github": "^4.3.2",
-    "eslint-plugin-jest": "^25.3.2",
+    "eslint": "^8.18.0",
+    "eslint-plugin-github": "^4.3.6",
+    "eslint-plugin-jest": "^26.5.3",
     "jest": "^27.2.5",
     "js-yaml": "^4.1.0",
     "prettier": "2.5.1",
