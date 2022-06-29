@@ -21,4 +21,6 @@ jobs:
       - uses: actions/checkout@v2
       - uses: ./
         with:
-          milliseconds: 1000
+          engine: rubocop
+          main: fixtures/rubocop/main.json
+          branch: fixtures/rubocop/branch.json

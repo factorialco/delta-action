@@ -1,11 +1,16 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Delta Action'
+description: 'Compute delta offenses for your pull requests'
+author: 'Factorial'
 inputs:
-  milliseconds: # change this
+  engine:
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: 'Engine used to compare deltas (rubocop, semgrep, eslint)'
+  main:
+    required: true
+    description: 'File path with results of your engine for the main branch'
+  branch:
+    required: true
+    description: 'File path with results of your engine for the branch. It can be a subset of result of changed files'
 runs:
   using: 'node16'
   main: 'dist/index.js'
