@@ -79,8 +79,22 @@ function run() {
             const main = core.getInput('main');
             const branch = core.getInput('branch');
             core.info(`🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`);
-            const mainData = fs.readFileSync(main, 'utf8');
-            const branchData = fs.readFileSync(branch, 'utf8');
+            let mainData;
+            let branchData;
+            try {
+                mainData = fs.readFileSync(main, 'utf8');
+            }
+            catch (err) {
+                core.info('⚠️  Unable to find main branch file!');
+                return;
+            }
+            try {
+                branchData = fs.readFileSync(branch, 'utf8');
+            }
+            catch (err) {
+                core.setFailed('⛔ Unable to find branch file!');
+                return;
+            }
             let results = [];
             if (engine === 'rubocop') {
                 results = (0, rubocop_1.rubocop)(mainData, branchData);
