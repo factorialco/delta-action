@@ -19,6 +19,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: git
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: |
+          echo "$(git merge-base origin/${{ github.head_ref }} origin/main)"
+          echo "STEP1"
+          echo "$(git merge-base ${{ github.base_ref }} origin/main)"
+          echo "STEP2"
+          echo "$(git merge-base HEAD~1 origin/main)"
+          echo "STEP3"
+          echo "$(git merge-base HEAD~2 origin/main)"
+          echo "STEP3"
+          echo "$(git merge-base HEAD~3 origin/main)"
+          echo "STEP4"
+          echo "$(git merge-base HEAD~4 origin/main)"
+          echo "STEP5"
+          echo "$(git merge-base --fork-point main)"
+          echo "STEP6"
+          echo "$(git merge-base --fork-point origin/main)"
+          echo "STEP7"
+          echo "$(git log -n 3)"
+
       - uses: ./
         with:
           engine: rubocop

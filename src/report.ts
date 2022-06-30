@@ -3,7 +3,7 @@ import {Result} from './main'
 type BetterWorldSummary = 'neutral' | 'worse' | 'better'
 
 const betterWorldCopy = (type: BetterWorldSummary): string => {
-  if (type === 'neutral') return '☯️ Neutral'
+  if (type === 'neutral') return '🧘 Neutral'
   if (type === 'worse') return '🔥 Worse'
   if (type === 'better') return '🌿 Better World!'
 
@@ -49,7 +49,7 @@ export function report(results: Result[]): Report {
   const aggregation = betterWorld(summary.main, summary.branch)
 
   const tableSummary = [
-    'Summary',
+    'Summary:',
     String(summary.main),
     String(summary.branch),
     betterWorldCopy(aggregation)

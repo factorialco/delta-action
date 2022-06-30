@@ -17,7 +17,7 @@ test('return rubocop results', () => {
       {data: 'Result', header: true}
     ],
     ['foo.rb', '2', '1', '🌿 Better World!'],
-    ['Summary', '2', '1', '🌿 Better World!']
+    ['Summary:', '2', '1', '🌿 Better World!']
   ]
 
   expect(delta).toStrictEqual({
