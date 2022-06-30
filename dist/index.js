@@ -140,7 +140,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.report = void 0;
 const betterWorldCopy = (type) => {
     if (type === 'neutral')
-        return '☯️ Neutral';
+        return '🧘 Neutral';
     if (type === 'worse')
         return '🔥 Worse';
     if (type === 'better')
@@ -173,7 +173,7 @@ function report(results) {
     }, { file: '', main: 0, branch: 0 });
     const aggregation = betterWorld(summary.main, summary.branch);
     const tableSummary = [
-        'Summary',
+        'Summary:',
         String(summary.main),
         String(summary.branch),
         betterWorldCopy(aggregation)
