@@ -32,6 +32,10 @@ interface Message {
   suggestions: Suggestion[]
 }
 
+const cleanName = (name: string): string => {
+  return name.replace(/\/runner\/_work\/([^/]*)\/([^/]*)\//, '') // Remove runner context
+}
+
 export function eslint(mainData: string, branchData: string): Result[] {
   const main: Eslint = JSON.parse(mainData)
   const branch: Eslint = JSON.parse(branchData)
@@ -41,7 +45,7 @@ export function eslint(mainData: string, branchData: string): Result[] {
       const fileInMain = main.find(f => f.filePath === file.filePath)
 
       memo.push({
-        file: file.filePath,
+        file: cleanName(file.filePath),
         main: fileInMain?.messages.length ?? 0,
         branch: file?.messages.length ?? 0
       })

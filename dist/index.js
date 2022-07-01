@@ -8,6 +8,9 @@ require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.eslint = void 0;
+const cleanName = (name) => {
+    return name.replace(/\/runner\/_work\/([^/]*)\/([^/]*)\//, ''); // Remove runner context
+};
 function eslint(mainData, branchData) {
     const main = JSON.parse(mainData);
     const branch = JSON.parse(branchData);
@@ -15,7 +18,7 @@ function eslint(mainData, branchData) {
         var _a, _b;
         const fileInMain = main.find(f => f.filePath === file.filePath);
         memo.push({
-            file: file.filePath,
+            file: cleanName(file.filePath),
             main: (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.messages.length) !== null && _a !== void 0 ? _a : 0,
             branch: (_b = file === null || file === void 0 ? void 0 : file.messages.length) !== null && _b !== void 0 ? _b : 0
         });
