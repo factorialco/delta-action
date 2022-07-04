@@ -1,4 +1,4 @@
-import {Result} from './main'
+import {DeltaOffense, DeltaResult} from './main'
 
 type BetterWorldSummary = 'neutral' | 'worse' | 'better'
 
@@ -23,9 +23,10 @@ type GithubTable = (string[] | {data: string; header: boolean}[])[]
 type Report = {
   aggregation: BetterWorldSummary
   table: GithubTable
+  offenses: DeltaOffense[]
 }
 
-export function report(results: Result[]): Report {
+export function report(results: DeltaResult[]): Report {
   const tableResults = results.map(result => {
     return [
       result.file,
@@ -35,18 +36,20 @@ export function report(results: Result[]): Report {
     ]
   })
 
-  const summary: Result = results.reduce(
+  const summary: DeltaResult = results.reduce(
     (memo, result) => {
       return {
         file: '',
         main: memo.main + result.main,
-        branch: memo.branch + result.branch
+        branch: memo.branch + result.branch,
+        offenses: [...memo.offenses, ...result.offenses]
       }
     },
-    {file: '', main: 0, branch: 0}
+    {file: '', main: 0, branch: 0, offenses: []}
   )
 
   const aggregation = betterWorld(summary.main, summary.branch)
+  const offenses = summary.offenses
 
   const tableSummary = [
     'Summary:',
@@ -66,6 +69,7 @@ export function report(results: Result[]): Report {
 
   return {
     aggregation,
-    table
+    table,
+    offenses
   }
 }
