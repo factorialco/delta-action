@@ -1,4 +1,7 @@
-import {Result} from './main'
+import diffParser from 'git-diff-parser'
+
+import {DeltaResult, DeltaOffense} from './main'
+import {intersection, lines, notEmpty} from './utils'
 
 interface Rubocop {
   metadata: Metadata
@@ -44,24 +47,59 @@ interface Summary {
   inspected_file_count: number
 }
 
-export function rubocop(mainData: string, branchData: string): Result[] {
-  const main: Rubocop = JSON.parse(mainData)
-  const branch: Rubocop = JSON.parse(branchData)
+export function rubocop(
+  files: string[],
+  diff: diffParser.Result,
+  mainData: string,
+  branchData: string
+): DeltaResult[] {
+  const rubocopInMain: Rubocop = JSON.parse(mainData)
+  const rubocopInBranch: Rubocop = JSON.parse(branchData)
 
-  const results: Result[] = branch.files.reduce(
-    (memo: Result[], file: OffendedFile) => {
-      const fileInMain = main.files.find(f => f.path === file.path)
+  const diffLines = lines(diff)
 
-      memo.push({
-        file: file.path,
-        main: fileInMain?.offenses.length ?? 0,
-        branch: file?.offenses.length ?? 0
-      })
+  const results: DeltaResult[] = files.map((file: string) => {
+    const fileInMain = rubocopInMain.files.find(f => f.path === file)
+    const fileInBranch = rubocopInBranch.files.find(f => f.path === file)
+    const main = fileInMain?.offenses.length ?? 0
+    const branch = fileInBranch?.offenses.length ?? 0
 
-      return memo
-    },
-    []
-  )
+    let offenses: DeltaOffense[] = []
+
+    if (main < branch) {
+      const rubocopLines =
+        fileInBranch?.offenses.map(offense => offense.location.line) ?? []
+
+      const shared = intersection(diffLines, [...new Set(rubocopLines)])
+
+      offenses = shared
+        .map(line => {
+          const message = fileInBranch?.offenses.find(
+            offense => offense.location.line === line
+          )
+
+          if (!message) return null
+
+          return {
+            file,
+            title: message.cop_name,
+            message: message.message,
+            startLine: message.location.line,
+            endLine: message.location.last_line,
+            startColumn: message.location.start_column,
+            endColumn: message.location.last_column
+          }
+        })
+        .filter(notEmpty)
+    }
+
+    return {
+      file,
+      main,
+      branch,
+      offenses
+    }
+  })
 
   return results
 }

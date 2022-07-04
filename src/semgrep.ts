@@ -1,4 +1,7 @@
-import {Result} from './main'
+import diffParser from 'git-diff-parser'
+
+import {DeltaResult, DeltaOffense} from './main'
+import {intersection, lines, notEmpty} from './utils'
 
 interface Semgrep {
   errors: SemgrepError[]
@@ -8,8 +11,6 @@ interface Semgrep {
 
 type SemgrepError = unknown
 type SemgrepPath = unknown
-type Position = unknown
-type Extra = unknown
 
 interface SemgrepOffense {
   path: string
@@ -19,33 +20,74 @@ interface SemgrepOffense {
   extra: Extra
 }
 
-export function semgrep(mainData: string, branchData: string): Result[] {
-  const main: Semgrep = JSON.parse(mainData)
-  const branch: Semgrep = JSON.parse(branchData)
+type Position = {
+  col: number
+  line: number
+  offset: number
+}
 
-  const filesNames = branch.results.reduce(
-    (memo: string[], offense: SemgrepOffense) => {
-      memo.push(offense.path)
+type Extra = {
+  is_ignored: boolean
+  lines: string
+  message: string
+  metadata: unknown
+  metavars: unknown
+  severity: string
+}
 
-      return memo
-    },
-    []
-  )
+export function semgrep(
+  files: string[],
+  diff: diffParser.Result,
+  mainData: string,
+  branchData: string
+): DeltaResult[] {
+  const semgrepInMain: Semgrep = JSON.parse(mainData)
+  const semgrepInBranch: Semgrep = JSON.parse(branchData)
 
-  const files = [...new Set(filesNames)]
+  const diffLines = lines(diff)
 
-  const results: Result[] = files.reduce((memo: Result[], fileName: string) => {
-    const file = branch.results.filter(o => o.path === fileName)
-    const fileInMain = main.results.filter(o => o.path === fileName)
+  const results: DeltaResult[] = files.map((file: string) => {
+    const fileInMain = semgrepInMain.results.filter(o => o.path === file)
+    const fileInBranch = semgrepInBranch.results.filter(o => o.path === file)
+    const main = fileInMain.length ?? 0
+    const branch = fileInBranch.length ?? 0
 
-    memo.push({
-      file: fileName,
-      main: fileInMain.length ?? 0,
-      branch: file.length ?? 0
-    })
+    let offenses: DeltaOffense[] = []
 
-    return memo
-  }, [])
+    if (main < branch) {
+      const semgrepLines =
+        fileInBranch?.map(offense => offense.start.line) ?? []
+
+      const shared = intersection(diffLines, [...new Set(semgrepLines)])
+
+      offenses = shared
+        .map(line => {
+          const message = fileInBranch?.find(
+            offense => offense.start.line === line
+          )
+
+          if (!message) return null
+
+          return {
+            file,
+            title: message.check_id,
+            message: message.extra.message,
+            startLine: message.start.line,
+            endLine: message.end.line,
+            startColumn: message.start.col,
+            endColumn: message.end.col
+          }
+        })
+        .filter(notEmpty)
+    }
+
+    return {
+      file,
+      main,
+      branch,
+      offenses
+    }
+  })
 
   return results
 }

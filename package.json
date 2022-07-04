@@ -1,6 +1,6 @@
 {
   "name": "delta-action",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Compute delta offenses for your pull requests",
   "main": "lib/main.js",
   "scripts": {
@@ -25,9 +25,10 @@
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.9.0",
-    "ansi-styles": "^6.1.0"
+    "git-diff-parser": "^1.0.0"
   },
   "devDependencies": {
+    "@types/git-diff-parser": "^1.0.1",
     "@types/node": "^16.10.5",
     "@typescript-eslint/parser": "^5.8.1",
     "@vercel/ncc": "^0.31.1",

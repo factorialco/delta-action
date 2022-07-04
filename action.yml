@@ -11,6 +11,12 @@ inputs:
   branch:
     required: true
     description: 'File path with results of your engine for the branch. It can be a subset of result of changed files'
+  head_ref:
+    required: true
+    description: 'Name of your branch head. (Ex: github.head_ref)'
+  forkpoint:
+    required: true
+    description: 'Commit id of your branch forkpoint.'
 runs:
   using: 'node16'
   main: 'dist/index.js'

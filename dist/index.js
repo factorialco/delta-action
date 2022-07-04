@@ -2,28 +2,54 @@ require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
 /***/ 764:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.eslint = void 0;
+const utils_1 = __nccwpck_require__(918);
 const cleanName = (name) => {
     return name.replace(/\/runner\/_work\/([^/]*)\/([^/]*)\//, ''); // Remove runner context
 };
-function eslint(mainData, branchData) {
-    const main = JSON.parse(mainData);
-    const branch = JSON.parse(branchData);
-    const results = branch.reduce((memo, file) => {
-        var _a, _b;
-        const fileInMain = main.find(f => f.filePath === file.filePath);
-        memo.push({
-            file: cleanName(file.filePath),
-            main: (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.messages.length) !== null && _a !== void 0 ? _a : 0,
-            branch: (_b = file === null || file === void 0 ? void 0 : file.messages.length) !== null && _b !== void 0 ? _b : 0
-        });
-        return memo;
-    }, []);
+function eslint(files, diff, mainData, branchData) {
+    const eslintInMain = JSON.parse(mainData);
+    const eslintInBranch = JSON.parse(branchData);
+    const diffLines = (0, utils_1.lines)(diff);
+    const results = files.map((file) => {
+        var _a, _b, _c;
+        const fileInMain = eslintInMain.find(f => cleanName(f.filePath) === file);
+        const fileInBranch = eslintInBranch.find(f => cleanName(f.filePath) === file);
+        const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.messages.length) !== null && _a !== void 0 ? _a : 0;
+        const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.length) !== null && _b !== void 0 ? _b : 0;
+        let offenses = [];
+        if (main < branch) {
+            const eslintLines = (_c = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.map(message => message.line)) !== null && _c !== void 0 ? _c : [];
+            const shared = (0, utils_1.intersection)(diffLines, [...new Set(eslintLines)]);
+            offenses = shared
+                .map(line => {
+                const message = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.find(m => m.line === line);
+                if (!message)
+                    return null;
+                return {
+                    file,
+                    title: message.ruleId,
+                    message: message.message,
+                    startLine: message.line,
+                    endLine: message.endLine,
+                    startColumn: message.column,
+                    endColumn: message.endColumn
+                };
+            })
+                .filter(utils_1.notEmpty);
+        }
+        return {
+            file,
+            main,
+            branch,
+            offenses
+        };
+    });
     return results;
 }
 exports.eslint = eslint;
@@ -68,9 +94,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.run = void 0;
 const core = __importStar(__nccwpck_require__(186));
 const fs = __importStar(__nccwpck_require__(747));
+const child_process_1 = __nccwpck_require__(129);
+const git_diff_parser_1 = __importDefault(__nccwpck_require__(360));
 const rubocop_1 = __nccwpck_require__(827);
 const eslint_1 = __nccwpck_require__(764);
 const semgrep_1 = __nccwpck_require__(753);
@@ -81,7 +113,13 @@ function run() {
             const engine = core.getInput('engine');
             const main = core.getInput('main');
             const branch = core.getInput('branch');
+            const headRef = core.getInput('head_ref');
+            const forkpoint = core.getInput('forkpoint');
             core.info(`🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`);
+            core.info(`📝 Checking file differences between '${headRef}' and '${forkpoint}'...`);
+            const diff = (0, git_diff_parser_1.default)((0, child_process_1.execSync)(`git diff ${forkpoint}..origin/${headRef}`));
+            const files = diff.commits.flatMap(commit => commit.files.map(file => file.name));
+            core.info(`📝 Changed files: ${files.join(', ')}`);
             let mainData;
             let branchData;
             try {
@@ -100,28 +138,48 @@ function run() {
             }
             let results = [];
             if (engine === 'rubocop') {
-                results = (0, rubocop_1.rubocop)(mainData, branchData);
+                results = (0, rubocop_1.rubocop)(files, diff, mainData, branchData);
             }
             else if (engine === 'eslint') {
-                results = (0, eslint_1.eslint)(mainData, branchData);
+                results = (0, eslint_1.eslint)(files, diff, mainData, branchData);
             }
             else if (engine === 'semgrep') {
-                results = (0, semgrep_1.semgrep)(mainData, branchData);
+                results = (0, semgrep_1.semgrep)(files, diff, mainData, branchData);
             }
             else {
                 throw new Error(`Unknown engine '${engine}'`);
             }
-            const { aggregation, table } = (0, report_1.report)(results);
-            yield core.summary.addHeading(`${engine} results`).addTable(table).write();
+            const { aggregation, table, offenses } = (0, report_1.report)(results);
+            yield core.summary
+                .addHeading(`${engine} results`)
+                .addRaw(`This is the list of all files analyzed by ${engine} and the BetterWorld™ result of each one.\n`)
+                .addRaw(`If the aggregation of all offenses is positive, this job will fail.\n`)
+                .addTable(table)
+                .addRaw(`${files.length} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n`)
+                .write();
             if (aggregation === 'worse') {
-                core.setFailed('🔥 The world is getting worse due to this pull request!');
+                core.setFailed('🔥 This pull request is introducing new offenses to the code base. Try to not introduce them! Review the action summary or the shown GitHub annotations.');
+                for (const offense of offenses) {
+                    core.warning(offense.message, {
+                        file: offense.file,
+                        title: offense.title,
+                        startLine: offense.startLine,
+                        endLine: offense.endLine,
+                        startColumn: offense.startColumn,
+                        endColumn: offense.endColumn
+                    });
+                }
             }
             else if (aggregation === 'neutral') {
-                core.info('☯️  Lost an opportunity to improve this world!');
+                core.info('🧘 Lost an opportunity to improve this world!');
+            }
+            else if (aggregation === 'awesome') {
+                core.info('✨ Awesome contribution! Thank you so much putting effort to make this world a better place!');
             }
             else {
                 core.info('🌿 Thank you so much! Better World!');
             }
+            core.setOutput('aggregation', aggregation);
         }
         catch (error) {
             if (error instanceof Error)
@@ -129,18 +187,20 @@ function run() {
         }
     });
 }
+exports.run = run;
 run();
 
 
 /***/ }),
 
 /***/ 269:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.report = void 0;
+const utils_1 = __nccwpck_require__(918);
 const betterWorldCopy = (type) => {
     if (type === 'neutral')
         return '🧘 Neutral';
@@ -148,33 +208,45 @@ const betterWorldCopy = (type) => {
         return '🔥 Worse';
     if (type === 'better')
         return '🌿 Better World!';
+    if (type === 'awesome')
+        return '✨ Awesome improvement!';
     throw new Error('Unknown type');
 };
+const AWESOME_DIFF = 10;
 // REVIEW: Check if this is the best strategy. It works for now.
 const betterWorld = (main, branch) => {
     if (branch === main)
         return 'neutral';
     if (branch > main)
         return 'worse';
+    if (main - branch >= AWESOME_DIFF)
+        return 'awesome';
     return 'better';
 };
 function report(results) {
-    const tableResults = results.map(result => {
+    const tableResults = results
+        .map(result => {
+        const status = betterWorld(result.main, result.branch);
+        if (status === 'neutral')
+            return null;
         return [
             result.file,
             String(result.main),
             String(result.branch),
-            betterWorldCopy(betterWorld(result.main, result.branch))
+            betterWorldCopy(status)
         ];
-    });
+    })
+        .filter(utils_1.notEmpty);
     const summary = results.reduce((memo, result) => {
         return {
             file: '',
             main: memo.main + result.main,
-            branch: memo.branch + result.branch
+            branch: memo.branch + result.branch,
+            offenses: [...memo.offenses, ...result.offenses]
         };
-    }, { file: '', main: 0, branch: 0 });
+    }, { file: '', main: 0, branch: 0, offenses: [] });
     const aggregation = betterWorld(summary.main, summary.branch);
+    const offenses = summary.offenses;
     const tableSummary = [
         'Summary:',
         String(summary.main),
@@ -190,7 +262,8 @@ function report(results) {
     const table = [headers, ...tableResults, tableSummary];
     return {
         aggregation,
-        table
+        table,
+        offenses
     };
 }
 exports.report = report;
@@ -199,25 +272,51 @@ exports.report = report;
 /***/ }),
 
 /***/ 827:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.rubocop = void 0;
-function rubocop(mainData, branchData) {
-    const main = JSON.parse(mainData);
-    const branch = JSON.parse(branchData);
-    const results = branch.files.reduce((memo, file) => {
-        var _a, _b;
-        const fileInMain = main.files.find(f => f.path === file.path);
-        memo.push({
-            file: file.path,
-            main: (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.offenses.length) !== null && _a !== void 0 ? _a : 0,
-            branch: (_b = file === null || file === void 0 ? void 0 : file.offenses.length) !== null && _b !== void 0 ? _b : 0
-        });
-        return memo;
-    }, []);
+const utils_1 = __nccwpck_require__(918);
+function rubocop(files, diff, mainData, branchData) {
+    const rubocopInMain = JSON.parse(mainData);
+    const rubocopInBranch = JSON.parse(branchData);
+    const diffLines = (0, utils_1.lines)(diff);
+    const results = files.map((file) => {
+        var _a, _b, _c;
+        const fileInMain = rubocopInMain.files.find(f => f.path === file);
+        const fileInBranch = rubocopInBranch.files.find(f => f.path === file);
+        const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.offenses.length) !== null && _a !== void 0 ? _a : 0;
+        const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.offenses.length) !== null && _b !== void 0 ? _b : 0;
+        let offenses = [];
+        if (main < branch) {
+            const rubocopLines = (_c = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.offenses.map(offense => offense.location.line)) !== null && _c !== void 0 ? _c : [];
+            const shared = (0, utils_1.intersection)(diffLines, [...new Set(rubocopLines)]);
+            offenses = shared
+                .map(line => {
+                const message = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.offenses.find(offense => offense.location.line === line);
+                if (!message)
+                    return null;
+                return {
+                    file,
+                    title: message.cop_name,
+                    message: message.message,
+                    startLine: message.location.line,
+                    endLine: message.location.last_line,
+                    startColumn: message.location.start_column,
+                    endColumn: message.location.last_column
+                };
+            })
+                .filter(utils_1.notEmpty);
+        }
+        return {
+            file,
+            main,
+            branch,
+            offenses
+        };
+    });
     return results;
 }
 exports.rubocop = rubocop;
@@ -226,34 +325,82 @@ exports.rubocop = rubocop;
 /***/ }),
 
 /***/ 753:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.semgrep = void 0;
-function semgrep(mainData, branchData) {
-    const main = JSON.parse(mainData);
-    const branch = JSON.parse(branchData);
-    const filesNames = branch.results.reduce((memo, offense) => {
-        memo.push(offense.path);
-        return memo;
-    }, []);
-    const files = [...new Set(filesNames)];
-    const results = files.reduce((memo, fileName) => {
-        var _a, _b;
-        const file = branch.results.filter(o => o.path === fileName);
-        const fileInMain = main.results.filter(o => o.path === fileName);
-        memo.push({
-            file: fileName,
-            main: (_a = fileInMain.length) !== null && _a !== void 0 ? _a : 0,
-            branch: (_b = file.length) !== null && _b !== void 0 ? _b : 0
-        });
-        return memo;
-    }, []);
+const utils_1 = __nccwpck_require__(918);
+function semgrep(files, diff, mainData, branchData) {
+    const semgrepInMain = JSON.parse(mainData);
+    const semgrepInBranch = JSON.parse(branchData);
+    const diffLines = (0, utils_1.lines)(diff);
+    const results = files.map((file) => {
+        var _a, _b, _c;
+        const fileInMain = semgrepInMain.results.filter(o => o.path === file);
+        const fileInBranch = semgrepInBranch.results.filter(o => o.path === file);
+        const main = (_a = fileInMain.length) !== null && _a !== void 0 ? _a : 0;
+        const branch = (_b = fileInBranch.length) !== null && _b !== void 0 ? _b : 0;
+        let offenses = [];
+        if (main < branch) {
+            const semgrepLines = (_c = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.map(offense => offense.start.line)) !== null && _c !== void 0 ? _c : [];
+            const shared = (0, utils_1.intersection)(diffLines, [...new Set(semgrepLines)]);
+            offenses = shared
+                .map(line => {
+                const message = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.find(offense => offense.start.line === line);
+                if (!message)
+                    return null;
+                return {
+                    file,
+                    title: message.check_id,
+                    message: message.extra.message,
+                    startLine: message.start.line,
+                    endLine: message.end.line,
+                    startColumn: message.start.col,
+                    endColumn: message.end.col
+                };
+            })
+                .filter(utils_1.notEmpty);
+        }
+        return {
+            file,
+            main,
+            branch,
+            offenses
+        };
+    });
     return results;
 }
 exports.semgrep = semgrep;
+
+
+/***/ }),
+
+/***/ 918:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.intersection = exports.lines = exports.notEmpty = void 0;
+function notEmpty(value) {
+    return value !== null && value !== undefined;
+}
+exports.notEmpty = notEmpty;
+const lines = (diff) => {
+    const items = diff.commits.flatMap(commit => {
+        return commit.files.flatMap(file => {
+            return file.lines
+                .map(line => (line.type !== 'deleted' ? line.ln1 : null))
+                .filter(notEmpty);
+        });
+    });
+    return [...new Set(items)];
+};
+exports.lines = lines;
+const intersection = (array1, array2) => array1.filter(value => array2.includes(value));
+exports.intersection = intersection;
 
 
 /***/ }),
@@ -1996,6 +2143,252 @@ exports.checkBypass = checkBypass;
 
 /***/ }),
 
+/***/ 360:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+module.exports = exports = __nccwpck_require__(814);
+
+/***/ }),
+
+/***/ 814:
+/***/ ((module, exports) => {
+
+/*
+ * decaffeinate suggestions:
+ * DS102: Remove unnecessary code created because of implicit returns
+ * DS205: Consider reworking code to avoid use of IIFEs
+ * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
+ */
+class Parser {
+  constructor(lines) {
+    this.lines = lines;
+    this.ln = 0;
+
+    this.result = {
+      detailed: false,
+      commits: []
+    };
+
+    while (this.ln < this.lines.length) {
+      const line = this.lines[this.ln];
+      // Metadata?
+      if (line.indexOf("From ") === 0) {
+        this.parseMetadata();
+      } else if (line.indexOf("diff ") === 0) {
+        this.parseDiff();
+      } else {
+        this.ln++;
+      }
+    }
+
+    if (this.currentCommit) { this.result.commits.push(this.currentCommit); }
+  }
+
+  parseMetadata() {
+    this.result.detailed = true;
+    if (this.currentCommit) { this.result.commits.push(this.currentCommit); }
+
+    this.currentCommit =
+      {files: []};
+
+    let isGettingMessage = false;
+
+    return (() => {
+      const result = [];
+      while (this.ln < this.lines.length) {
+        var matches;
+        const line = this.lines[this.ln];
+
+        if (line.indexOf("diff ") === 0) { break; }
+
+        if (isGettingMessage) {
+          if (line.indexOf("---") === 0) {
+            isGettingMessage = false;
+          } else {
+            this.currentCommit.message += line.indexOf(" ") === 0 ? line : `\n${line}`;
+          }
+
+        } else if (line.indexOf("From ") === 0) {
+          matches = line.match(/^From\s([a-z|0-9]*)\s(\w.*)$/);
+
+          if (matches.length === 3) {
+            this.currentCommit.sha  = matches[1];
+            this.currentCommit.date = new Date(matches[2]);
+          }
+
+        } else if (line.indexOf("From: ") === 0) {
+          matches = line.match(/^From:\s(.*)\s\<(\w.*)\>$/);
+
+          if (matches.length === 3) {
+            this.currentCommit.author  = matches[1];
+            this.currentCommit.email = matches[2];
+          } else {
+            console.log(line);
+            exit();
+          }
+
+        } else if (line.indexOf("Date: ") === 0) {
+          matches = line.match(/^Date:\s(\w.*)$/);
+
+          if (matches.length === 2) {
+            this.currentCommit.date  = new Date(matches[1]);
+          }
+
+        } else if (line.indexOf("Subject: ") === 0) {
+          this.currentCommit.message = line.substr(9);
+          isGettingMessage = true;
+        }
+
+        result.push(this.ln++);
+      }
+      return result;
+    })();
+  }
+
+  parseDiff() {
+    if (!this.currentCommit) { this.currentCommit =
+      {files: []}; }
+
+    const parseFile = function(s) {
+      s = s.trim();
+      if (s[0] === '"') { s = s.slice(1, -1); }
+      // ignore possible time stamp
+      const t = (/\d{4}-\d\d-\d\d\s\d\d:\d\d:\d\d(.\d+)?\s(\+|-)\d\d\d\d/).exec(s);
+      if (t) { s = s.substring(0, t.index).trim(); }
+      // ignore git prefixes a/ or b/
+      if (s.match((/^(a|b)\//))) { return s.substr(2); } else { return s; }
+    };
+
+    const file = {
+      deleted: false,
+      added: false,
+      renamed: false,
+      binary: false,
+      lines: []
+    };
+
+    let firstRun = true;
+    let lineBreak = false;
+
+    let lnDel = 0;
+    let lnAdd = 0;
+    const noeol = "\\ No newline at end of file";
+
+    while (this.ln < this.lines.length) {
+      var matches;
+      const line = this.lines[this.ln];
+      
+      if (((line.indexOf("diff ") === 0) && !firstRun) || (this.result.detailed && (line === "-- "))) {
+        break;
+      }
+
+      if (line.indexOf("diff ") === 0) {
+        // Git diff?
+        matches = line.match(/^diff\s\-\-git\s("a\/.*"|a\/.*)\s("b\/.*"|b\/.*)$/);
+
+        if (matches.length === 3) {
+          file.from = parseFile(matches[1]);
+          file.to   = parseFile(matches[2]);
+        }
+
+      } else if (line.indexOf("+++ ") === 0) {
+        if (!file.to) { file.to = parseFile(line.substr(4)); }
+
+      } else if (line.indexOf("--- ") === 0) {
+        if (!file.from) { file.from = parseFile(line.substr(4)); }
+
+      } else if (line === "GIT binary patch") {
+        file.binary = true;
+        break;
+
+      } else if (/^deleted file mode \d+$/.test(line)) {
+        file.deleted = true;
+
+      } else if (/^new file mode \d+$/.test(line)) {
+        file.added = true;
+
+      } else if (/^new file mode \d+$/.test(line)) {
+        file.added = true;
+
+      } else if (/^index\s[\da-zA-Z]+\.\.[\da-zA-Z]+(\s(\d+))?$/.test(line)) {
+        file.index = line.split(' ').slice(1);
+
+      } else if (/^Binary\sfiles\s(.*)differ$/.test(line)) {
+        file.binary = true;
+        break;
+
+      } else if (/^@@\s+\-(\d+),(\d+)\s+\+(\d+),(\d+)\s@@/.test(line)) {
+        matches = line.match(/^@@\s+\-(\d+),(\d+)\s+\+(\d+),(\d+)\s@@/);
+        lineBreak = file.lines.length !== 0;
+        lnDel   = +matches[1];
+        lnAdd   = +matches[3];
+
+      } else {
+        if (/^-/.test(line)) {
+          file.lines.push({
+            type: "deleted",
+            break: lineBreak && !file.added,
+            text: line.substr(1),
+            ln1:  line !== noeol ? lnDel++ : undefined
+          });
+        } else if (/^\+/.test(line)) {
+          file.lines.push({
+            type: "added",
+            break: lineBreak && !file.added,
+            text: line.substr(1),
+            ln1:  line !== noeol ? lnAdd++ : undefined
+          });
+        } else {
+          if (line !== noeol) { file.lines.push({
+            type: "normal",
+            break: lineBreak && !file.added,
+            text: line.substr(1),
+            ln1:  line !== noeol ? lnDel++ : undefined,
+            ln2:  line !== noeol ? lnAdd++ : undefined
+          }); }
+        }
+
+        lineBreak = false;
+      }
+
+
+      firstRun = false;
+      this.ln++;
+    }
+
+    if (file.from === "/dev/null") {
+      file.added = true;
+    } else {
+      file.renamed = !file.added && !file.deleted && (file.to !== file.from);
+      if (file.renamed) { file.oldName = file.from; }
+    }
+
+    file.name = file.to;
+
+    // Let's just assume it's binary if this is the case
+    if ((file.lines.length === 0) && !this.result.detailed) {
+      file.binary = true;
+    }
+    
+    delete file.from;
+    delete file.to;
+
+    return this.currentCommit.files.push(file);
+  }
+}
+
+
+module.exports = (exports = function(input) {
+  const result = {};
+  if (input instanceof Buffer) { input  = input.toString(); }
+  const lines  = input.split("\n");
+
+  return (new Parser(lines)).result;
+});
+  
+
+/***/ }),
+
 /***/ 294:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -2281,6 +2674,14 @@ exports.debug = debug; // for test
 
 "use strict";
 module.exports = require("assert");
+
+/***/ }),
+
+/***/ 129:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("child_process");
 
 /***/ }),
 
