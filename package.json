@@ -30,7 +30,7 @@
   "devDependencies": {
     "@types/git-diff-parser": "^1.0.1",
     "@types/node": "^16.10.5",
-    "@typescript-eslint/parser": "^5.8.1",
+    "@typescript-eslint/parser": "^5.30.5",
     "@vercel/ncc": "^0.31.1",
     "eslint": "^8.18.0",
     "eslint-plugin-github": "^4.3.6",
