@@ -42,7 +42,7 @@ export async function run(): Promise<void> {
     )
 
     const diff = diffParser(
-      execSync(`git diff ${forkpoint}..origin/${headRef}`)
+      execSync(`git diff "${forkpoint}..origin/${headRef}"`)
     )
     const files = diff.commits.flatMap(commit =>
       commit.files.map(file => file.name)
@@ -84,14 +84,14 @@ export async function run(): Promise<void> {
     await core.summary
       .addHeading(`${engine} results`)
       .addRaw(
-        `This is the list of all files analyzed by ${engine} and the BetterWorld™ result of each one.\n`
+        `This is the list of all files analyzed by ${engine} and the BetterWorld™ result of each one.\n\n`
       )
       .addRaw(
-        `If the aggregation of all offenses is positive, this job will fail.\n`
+        `If the aggregation of all offenses is positive, this job will fail.\n\n`
       )
       .addTable(table)
       .addRaw(
-        `${files.length} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n`
+        `${files.length} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n\n`
       )
       .write()
 

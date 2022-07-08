@@ -117,7 +117,7 @@ function run() {
             const forkpoint = core.getInput('forkpoint');
             core.info(`🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`);
             core.info(`📝 Checking file differences between '${headRef}' and '${forkpoint}'...`);
-            const diff = (0, git_diff_parser_1.default)((0, child_process_1.execSync)(`git diff ${forkpoint}..origin/${headRef}`));
+            const diff = (0, git_diff_parser_1.default)((0, child_process_1.execSync)(`git diff "${forkpoint}..origin/${headRef}"`));
             const files = diff.commits.flatMap(commit => commit.files.map(file => file.name));
             core.info(`📝 Changed files: ${files.join(', ')}`);
             let mainData;
@@ -152,10 +152,10 @@ function run() {
             const { aggregation, table, offenses } = (0, report_1.report)(results);
             yield core.summary
                 .addHeading(`${engine} results`)
-                .addRaw(`This is the list of all files analyzed by ${engine} and the BetterWorld™ result of each one.\n`)
-                .addRaw(`If the aggregation of all offenses is positive, this job will fail.\n`)
+                .addRaw(`This is the list of all files analyzed by ${engine} and the BetterWorld™ result of each one.\n\n`)
+                .addRaw(`If the aggregation of all offenses is positive, this job will fail.\n\n`)
                 .addTable(table)
-                .addRaw(`${files.length} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n`)
+                .addRaw(`${files.length} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n\n`)
                 .write();
             if (aggregation === 'worse') {
                 core.setFailed('🔥 This pull request is introducing new offenses to the code base. Try to not introduce them! Review the action summary or the shown GitHub annotations.');
