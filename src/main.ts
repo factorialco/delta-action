@@ -110,6 +110,14 @@ export async function run(): Promise<void> {
           endColumn: offense.endColumn
         })
       }
+
+      const details = offenses
+        .map(offense => `${offense.file}:${offense.startLine} ${offense.title}`)
+        .join('\n')
+
+      await core.summary
+        .addDetails('Offenses details:', `<pre>${details}</pre>`)
+        .write()
     } else if (aggregation === 'neutral') {
       core.info('🧘 Lost an opportunity to improve this world!')
     } else if (aggregation === 'awesome') {

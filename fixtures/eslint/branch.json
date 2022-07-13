@@ -1,1 +1,1 @@
-[{"filePath":"bar.js","messages":[{"ruleId":"@typescript-eslint/no-explicit-any"}]}]
+[{"filePath":"bar.js","messages":[{"ruleId":"@typescript-eslint/no-explicit-any", "severity":2}]}]

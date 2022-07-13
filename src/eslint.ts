@@ -39,6 +39,8 @@ const cleanName = (name: string): string => {
   return name.replace(/\/runner\/_work\/([^/]*)\/([^/]*)\//, '') // Remove runner context
 }
 
+const filterErrors = (message: Message): boolean => message.severity > 1
+
 export function eslint(
   files: string[],
   diff: diffParser.Result,
@@ -55,14 +57,16 @@ export function eslint(
     const fileInBranch = eslintInBranch.find(
       f => cleanName(f.filePath) === file
     )
-    const main = fileInMain?.messages.length ?? 0
-    const branch = fileInBranch?.messages.length ?? 0
+    const main = fileInMain?.messages.filter(filterErrors).length ?? 0
+    const branch = fileInBranch?.messages.filter(filterErrors).length ?? 0
 
     let offenses: DeltaOffense[] = []
 
     if (main < branch) {
       const eslintLines =
-        fileInBranch?.messages.map(message => message.line) ?? []
+        fileInBranch?.messages
+          .filter(filterErrors)
+          .map(message => message.line) ?? []
 
       const shared = intersection(diffLines, [...new Set(eslintLines)])
 

@@ -12,6 +12,7 @@ const utils_1 = __nccwpck_require__(918);
 const cleanName = (name) => {
     return name.replace(/\/runner\/_work\/([^/]*)\/([^/]*)\//, ''); // Remove runner context
 };
+const filterErrors = (message) => message.severity > 1;
 function eslint(files, diff, mainData, branchData) {
     const eslintInMain = JSON.parse(mainData);
     const eslintInBranch = JSON.parse(branchData);
@@ -20,11 +21,11 @@ function eslint(files, diff, mainData, branchData) {
         var _a, _b, _c;
         const fileInMain = eslintInMain.find(f => cleanName(f.filePath) === file);
         const fileInBranch = eslintInBranch.find(f => cleanName(f.filePath) === file);
-        const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.messages.length) !== null && _a !== void 0 ? _a : 0;
-        const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.length) !== null && _b !== void 0 ? _b : 0;
+        const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.messages.filter(filterErrors).length) !== null && _a !== void 0 ? _a : 0;
+        const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.filter(filterErrors).length) !== null && _b !== void 0 ? _b : 0;
         let offenses = [];
         if (main < branch) {
-            const eslintLines = (_c = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.map(message => message.line)) !== null && _c !== void 0 ? _c : [];
+            const eslintLines = (_c = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.filter(filterErrors).map(message => message.line)) !== null && _c !== void 0 ? _c : [];
             const shared = (0, utils_1.intersection)(diffLines, [...new Set(eslintLines)]);
             offenses = shared
                 .map(line => {
@@ -169,6 +170,12 @@ function run() {
                         endColumn: offense.endColumn
                     });
                 }
+                const details = offenses
+                    .map(offense => `${offense.file}:${offense.startLine} ${offense.title}`)
+                    .join('\n');
+                yield core.summary
+                    .addDetails('Offenses details:', `<pre>${details}</pre>`)
+                    .write();
             }
             else if (aggregation === 'neutral') {
                 core.info('🧘 Lost an opportunity to improve this world!');
