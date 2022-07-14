@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import * as fs from 'fs'
-import {execSync} from 'child_process'
+import {spawn} from 'child_process'
 import diffParser from 'git-diff-parser'
 
 import {rubocop} from './rubocop'
@@ -25,6 +25,28 @@ export interface DeltaOffense {
   endColumn: number
 }
 
+const execShellCommand = async (
+  cmd: string,
+  args: string[]
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    let output = ''
+    const child = spawn(cmd, args)
+
+    child.stdout.on('data', (data: string) => {
+      output = output.concat(data)
+    })
+
+    child.on('error', (error: Error) => {
+      return reject(error)
+    })
+
+    child.on('close', () => {
+      return resolve(output)
+    })
+  })
+}
+
 export async function run(): Promise<void> {
   try {
     const engine = core.getInput('engine')
@@ -41,9 +63,11 @@ export async function run(): Promise<void> {
       `📝 Checking file differences between '${headRef}' and '${forkpoint}'...`
     )
 
-    const diff = diffParser(
-      execSync(`git diff "${forkpoint}..origin/${headRef}"`)
-    )
+    const diffOutput = await execShellCommand('git', [
+      'diff',
+      `${forkpoint}..origin/${headRef}`
+    ])
+    const diff = diffParser(diffOutput)
     const files = diff.commits.flatMap(commit =>
       commit.files.map(file => file.name)
     )
@@ -130,7 +154,11 @@ export async function run(): Promise<void> {
 
     core.setOutput('aggregation', aggregation)
   } catch (error) {
-    if (error instanceof Error) core.setFailed(error.message)
+    if (error instanceof Error) {
+      core.setFailed(error.message)
+    } else {
+      core.setFailed(String(error))
+    }
   }
 }
 

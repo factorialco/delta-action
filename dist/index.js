@@ -108,6 +108,21 @@ const rubocop_1 = __nccwpck_require__(827);
 const eslint_1 = __nccwpck_require__(764);
 const semgrep_1 = __nccwpck_require__(753);
 const report_1 = __nccwpck_require__(269);
+const execShellCommand = (cmd, args) => __awaiter(void 0, void 0, void 0, function* () {
+    return new Promise((resolve, reject) => {
+        let output = '';
+        const child = (0, child_process_1.spawn)(cmd, args);
+        child.stdout.on('data', (data) => {
+            output = output.concat(data);
+        });
+        child.on('error', (error) => {
+            return reject(error);
+        });
+        child.on('close', () => {
+            return resolve(output);
+        });
+    });
+});
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -118,7 +133,11 @@ function run() {
             const forkpoint = core.getInput('forkpoint');
             core.info(`🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`);
             core.info(`📝 Checking file differences between '${headRef}' and '${forkpoint}'...`);
-            const diff = (0, git_diff_parser_1.default)((0, child_process_1.execSync)(`git diff "${forkpoint}..origin/${headRef}"`));
+            const diffOutput = yield execShellCommand('git', [
+                'diff',
+                `${forkpoint}..origin/${headRef}`
+            ]);
+            const diff = (0, git_diff_parser_1.default)(diffOutput);
             const files = diff.commits.flatMap(commit => commit.files.map(file => file.name));
             core.info(`📝 Changed files: ${files.join(', ')}`);
             let mainData;
@@ -189,8 +208,12 @@ function run() {
             core.setOutput('aggregation', aggregation);
         }
         catch (error) {
-            if (error instanceof Error)
+            if (error instanceof Error) {
                 core.setFailed(error.message);
+            }
+            else {
+                core.setFailed(String(error));
+            }
         }
     });
 }
