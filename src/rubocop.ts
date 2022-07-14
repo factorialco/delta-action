@@ -56,8 +56,6 @@ export function rubocop(
   const rubocopInMain: Rubocop = JSON.parse(mainData)
   const rubocopInBranch: Rubocop = JSON.parse(branchData)
 
-  const diffLines = lines(diff)
-
   const results: DeltaResult[] = files.map((file: string) => {
     const fileInMain = rubocopInMain.files.find(f => f.path === file)
     const fileInBranch = rubocopInBranch.files.find(f => f.path === file)
@@ -67,6 +65,7 @@ export function rubocop(
     let offenses: DeltaOffense[] = []
 
     if (main < branch) {
+      const diffLines = lines(diff, file)
       const rubocopLines =
         fileInBranch?.offenses.map(offense => offense.location.line) ?? []
 

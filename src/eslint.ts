@@ -50,8 +50,6 @@ export function eslint(
   const eslintInMain: Eslint = JSON.parse(mainData)
   const eslintInBranch: Eslint = JSON.parse(branchData)
 
-  const diffLines = lines(diff)
-
   const results: DeltaResult[] = files.map((file: string) => {
     const fileInMain = eslintInMain.find(f => cleanName(f.filePath) === file)
     const fileInBranch = eslintInBranch.find(
@@ -63,6 +61,7 @@ export function eslint(
     let offenses: DeltaOffense[] = []
 
     if (main < branch) {
+      const diffLines = lines(diff, file)
       const eslintLines =
         fileInBranch?.messages
           .filter(filterErrors)

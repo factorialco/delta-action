@@ -44,8 +44,6 @@ export function semgrep(
   const semgrepInMain: Semgrep = JSON.parse(mainData)
   const semgrepInBranch: Semgrep = JSON.parse(branchData)
 
-  const diffLines = lines(diff)
-
   const results: DeltaResult[] = files.map((file: string) => {
     const fileInMain = semgrepInMain.results.filter(o => o.path === file)
     const fileInBranch = semgrepInBranch.results.filter(o => o.path === file)
@@ -55,6 +53,7 @@ export function semgrep(
     let offenses: DeltaOffense[] = []
 
     if (main < branch) {
+      const diffLines = lines(diff, file)
       const semgrepLines =
         fileInBranch?.map(offense => offense.start.line) ?? []
 

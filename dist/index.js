@@ -16,7 +16,6 @@ const filterErrors = (message) => message.severity > 1;
 function eslint(files, diff, mainData, branchData) {
     const eslintInMain = JSON.parse(mainData);
     const eslintInBranch = JSON.parse(branchData);
-    const diffLines = (0, utils_1.lines)(diff);
     const results = files.map((file) => {
         var _a, _b, _c;
         const fileInMain = eslintInMain.find(f => cleanName(f.filePath) === file);
@@ -25,6 +24,7 @@ function eslint(files, diff, mainData, branchData) {
         const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.filter(filterErrors).length) !== null && _b !== void 0 ? _b : 0;
         let offenses = [];
         if (main < branch) {
+            const diffLines = (0, utils_1.lines)(diff, file);
             const eslintLines = (_c = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.filter(filterErrors).map(message => message.line)) !== null && _c !== void 0 ? _c : [];
             const shared = (0, utils_1.intersection)(diffLines, [...new Set(eslintLines)]);
             offenses = shared
@@ -312,7 +312,6 @@ const utils_1 = __nccwpck_require__(918);
 function rubocop(files, diff, mainData, branchData) {
     const rubocopInMain = JSON.parse(mainData);
     const rubocopInBranch = JSON.parse(branchData);
-    const diffLines = (0, utils_1.lines)(diff);
     const results = files.map((file) => {
         var _a, _b, _c;
         const fileInMain = rubocopInMain.files.find(f => f.path === file);
@@ -321,6 +320,7 @@ function rubocop(files, diff, mainData, branchData) {
         const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.offenses.length) !== null && _b !== void 0 ? _b : 0;
         let offenses = [];
         if (main < branch) {
+            const diffLines = (0, utils_1.lines)(diff, file);
             const rubocopLines = (_c = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.offenses.map(offense => offense.location.line)) !== null && _c !== void 0 ? _c : [];
             const shared = (0, utils_1.intersection)(diffLines, [...new Set(rubocopLines)]);
             offenses = shared
@@ -365,7 +365,6 @@ const utils_1 = __nccwpck_require__(918);
 function semgrep(files, diff, mainData, branchData) {
     const semgrepInMain = JSON.parse(mainData);
     const semgrepInBranch = JSON.parse(branchData);
-    const diffLines = (0, utils_1.lines)(diff);
     const results = files.map((file) => {
         var _a, _b, _c;
         const fileInMain = semgrepInMain.results.filter(o => o.path === file);
@@ -374,6 +373,7 @@ function semgrep(files, diff, mainData, branchData) {
         const branch = (_b = fileInBranch.length) !== null && _b !== void 0 ? _b : 0;
         let offenses = [];
         if (main < branch) {
+            const diffLines = (0, utils_1.lines)(diff, file);
             const semgrepLines = (_c = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.map(offense => offense.start.line)) !== null && _c !== void 0 ? _c : [];
             const shared = (0, utils_1.intersection)(diffLines, [...new Set(semgrepLines)]);
             offenses = shared
@@ -418,9 +418,11 @@ function notEmpty(value) {
     return value !== null && value !== undefined;
 }
 exports.notEmpty = notEmpty;
-const lines = (diff) => {
+const lines = (diff, diffFile) => {
     const items = diff.commits.flatMap(commit => {
         return commit.files.flatMap(file => {
+            if (diffFile !== file.name)
+                return [];
             return file.lines
                 .map(line => (line.type !== 'deleted' ? line.ln1 : null))
                 .filter(notEmpty);
