@@ -22,3 +22,24 @@ export const lines = (diff: diffParser.Result, diffFile: string): number[] => {
 
 export const intersection = (array1: number[], array2: number[]): number[] =>
   array1.filter(value => array2.includes(value))
+
+interface ChangedFiles {
+  files: string[]
+  renames: Record<string, string>
+}
+
+export const changedFiles = (diff: diffParser.Result): ChangedFiles => {
+  const files = diff.commits.flatMap(commit =>
+    commit.files.map(file => file.name)
+  )
+  const renames = diff.commits.flatMap(commit => {
+    return commit.files
+      .filter(file => file.renamed)
+      .map(file => [file.name, file.oldName])
+  })
+
+  return {
+    files,
+    renames: Object.fromEntries(renames)
+  }
+}

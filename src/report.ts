@@ -29,9 +29,11 @@ type Report = {
   aggregation: BetterWorldSummary
   table: GithubTable
   offenses: DeltaOffense[]
+  analyzed: number
 }
 
 export function report(results: DeltaResult[]): Report {
+  const analyzed = results.length
   const tableResults = results
     .map(result => {
       const status = betterWorld(result.main, result.branch)
@@ -81,6 +83,7 @@ export function report(results: DeltaResult[]): Report {
   return {
     aggregation,
     table,
-    offenses
+    offenses,
+    analyzed
   }
 }

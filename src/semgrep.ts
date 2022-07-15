@@ -1,7 +1,7 @@
 import diffParser from 'git-diff-parser'
 
 import {DeltaResult, DeltaOffense} from './main'
-import {intersection, lines, notEmpty} from './utils'
+import {changedFiles, intersection, lines, notEmpty} from './utils'
 
 interface Semgrep {
   errors: SemgrepError[]
@@ -36,16 +36,19 @@ type Extra = {
 }
 
 export function semgrep(
-  files: string[],
   diff: diffParser.Result,
   mainData: string,
   branchData: string
 ): DeltaResult[] {
+  const {files, renames} = changedFiles(diff)
+
   const semgrepInMain: Semgrep = JSON.parse(mainData)
   const semgrepInBranch: Semgrep = JSON.parse(branchData)
 
   const results: DeltaResult[] = files.map((file: string) => {
-    const fileInMain = semgrepInMain.results.filter(o => o.path === file)
+    const fileInMain = semgrepInMain.results.filter(
+      o => o.path === (renames[file] ?? file)
+    )
     const fileInBranch = semgrepInBranch.results.filter(o => o.path === file)
     const main = fileInMain.length ?? 0
     const branch = fileInBranch.length ?? 0

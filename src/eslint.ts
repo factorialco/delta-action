@@ -1,7 +1,7 @@
 import diffParser from 'git-diff-parser'
 
 import {DeltaResult, DeltaOffense} from './main'
-import {intersection, lines, notEmpty} from './utils'
+import {intersection, lines, notEmpty, changedFiles} from './utils'
 
 type Eslint = FileOffense[]
 
@@ -42,16 +42,19 @@ const cleanName = (name: string): string => {
 const filterErrors = (message: Message): boolean => message.severity > 1
 
 export function eslint(
-  files: string[],
   diff: diffParser.Result,
   mainData: string,
   branchData: string
 ): DeltaResult[] {
+  const {files, renames} = changedFiles(diff)
+
   const eslintInMain: Eslint = JSON.parse(mainData)
   const eslintInBranch: Eslint = JSON.parse(branchData)
 
   const results: DeltaResult[] = files.map((file: string) => {
-    const fileInMain = eslintInMain.find(f => cleanName(f.filePath) === file)
+    const fileInMain = eslintInMain.find(
+      f => cleanName(f.filePath) === (renames[file] ?? file)
+    )
     const fileInBranch = eslintInBranch.find(
       f => cleanName(f.filePath) === file
     )
