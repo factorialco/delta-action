@@ -49,25 +49,27 @@ export function semgrep(
   const semgrepInMain: Semgrep = JSON.parse(mainData)
   const semgrepInBranch: Semgrep = JSON.parse(branchData)
 
-  core.info(`files: ${files.join(',')}`)
-  core.info(`renames: ${renames}`)
-
-  const results: DeltaResult[] = files.map((changedFile: string) => {
-    core.info(`changedFile: ${changedFile}`)
-
-    const file = path.join(monorepoPrefix, changedFile)
-    core.info(`file: ${file}`)
-
+  const results: DeltaResult[] = files.map((file: string) => {
     const fileInMain = semgrepInMain.results.filter(
-      o => o.path === (renames[file] ?? file)
+      o => path.join(monorepoPrefix, o.path) === (renames[file] ?? file)
     )
 
-    core.info(`semgrepInMain.results[0].path: ${semgrepInMain.results[0].path}`)
+    core.info(
+      `semgrepInMain.results[0].path: ${path.join(
+        monorepoPrefix,
+        semgrepInMain.results[0].path
+      )}`
+    )
 
-    const fileInBranch = semgrepInBranch.results.filter(o => o.path === file)
+    const fileInBranch = semgrepInBranch.results.filter(
+      o => path.join(monorepoPrefix, o.path) === file
+    )
 
     core.info(
-      `semgrepInBranch.results[0].path: ${semgrepInBranch.results[0].path}`
+      `semgrepInBranch.results[0].path: ${path.join(
+        monorepoPrefix,
+        semgrepInBranch.results[0].path
+      )}`
     )
 
     const main = fileInMain.length ?? 0

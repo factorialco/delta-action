@@ -31,6 +31,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.eslint = void 0;
+const core = __importStar(__nccwpck_require__(186));
 const path = __importStar(__nccwpck_require__(622));
 const utils_1 = __nccwpck_require__(918);
 const cleanName = (name) => {
@@ -41,13 +42,14 @@ function eslint(diff, mainData, branchData, monorepoPrefix) {
     const { files, renames } = (0, utils_1.changedFiles)(diff);
     const eslintInMain = JSON.parse(mainData);
     const eslintInBranch = JSON.parse(branchData);
-    const results = files.map((changedFile) => {
+    const results = files.map((file) => {
         var _a, _b, _c;
-        const file = path.join(monorepoPrefix, changedFile);
-        const fileInMain = eslintInMain.find(f => { var _a; return cleanName(f.filePath) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
-        const fileInBranch = eslintInBranch.find(f => cleanName(f.filePath) === file);
+        const fileInMain = eslintInMain.find(f => { var _a; return path.join(monorepoPrefix, cleanName(f.filePath)) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
+        const fileInBranch = eslintInBranch.find(f => path.join(monorepoPrefix, cleanName(f.filePath)) === file);
         const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.messages.filter(filterErrors).length) !== null && _a !== void 0 ? _a : 0;
         const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.filter(filterErrors).length) !== null && _b !== void 0 ? _b : 0;
+        core.info(`eslintInMain.results[0].path: ${path.join(monorepoPrefix, eslintInMain[0].filePath)}`);
+        core.info(`eslintInBranch.results[0].path: ${path.join(monorepoPrefix, eslintInBranch[0].filePath)}`);
         let offenses = [];
         if (main < branch) {
             const diffLines = (0, utils_1.lines)(diff, file);
@@ -364,11 +366,10 @@ function rubocop(diff, mainData, branchData, monorepoPrefix) {
     const { files, renames } = (0, utils_1.changedFiles)(diff);
     const rubocopInMain = JSON.parse(mainData);
     const rubocopInBranch = JSON.parse(branchData);
-    const results = files.map((changedFile) => {
+    const results = files.map((file) => {
         var _a, _b, _c;
-        const file = path.join(monorepoPrefix, changedFile);
-        const fileInMain = rubocopInMain.files.find(f => { var _a; return f.path === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
-        const fileInBranch = rubocopInBranch.files.find(f => f.path === file);
+        const fileInMain = rubocopInMain.files.find(f => { var _a; return path.join(monorepoPrefix, f.path) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
+        const fileInBranch = rubocopInBranch.files.find(f => path.join(monorepoPrefix, f.path) === file);
         const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.offenses.length) !== null && _a !== void 0 ? _a : 0;
         const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.offenses.length) !== null && _b !== void 0 ? _b : 0;
         let offenses = [];
@@ -444,17 +445,12 @@ function semgrep(diff, mainData, branchData, monorepoPrefix) {
     const { files, renames } = (0, utils_1.changedFiles)(diff);
     const semgrepInMain = JSON.parse(mainData);
     const semgrepInBranch = JSON.parse(branchData);
-    core.info(`files: ${files.join(',')}`);
-    core.info(`renames: ${renames}`);
-    const results = files.map((changedFile) => {
+    const results = files.map((file) => {
         var _a, _b, _c;
-        core.info(`changedFile: ${changedFile}`);
-        const file = path.join(monorepoPrefix, changedFile);
-        core.info(`file: ${file}`);
-        const fileInMain = semgrepInMain.results.filter(o => { var _a; return o.path === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
-        core.info(`semgrepInMain.results[0].path: ${semgrepInMain.results[0].path}`);
-        const fileInBranch = semgrepInBranch.results.filter(o => o.path === file);
-        core.info(`semgrepInBranch.results[0].path: ${semgrepInBranch.results[0].path}`);
+        const fileInMain = semgrepInMain.results.filter(o => { var _a; return path.join(monorepoPrefix, o.path) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
+        core.info(`semgrepInMain.results[0].path: ${path.join(monorepoPrefix, semgrepInMain.results[0].path)}`);
+        const fileInBranch = semgrepInBranch.results.filter(o => path.join(monorepoPrefix, o.path) === file);
+        core.info(`semgrepInBranch.results[0].path: ${path.join(monorepoPrefix, semgrepInBranch.results[0].path)}`);
         const main = (_a = fileInMain.length) !== null && _a !== void 0 ? _a : 0;
         const branch = (_b = fileInBranch.length) !== null && _b !== void 0 ? _b : 0;
         let offenses = [];

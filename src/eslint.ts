@@ -1,3 +1,5 @@
+import * as core from '@actions/core'
+
 import diffParser from 'git-diff-parser'
 import * as path from 'path'
 
@@ -53,16 +55,30 @@ export function eslint(
   const eslintInMain: Eslint = JSON.parse(mainData)
   const eslintInBranch: Eslint = JSON.parse(branchData)
 
-  const results: DeltaResult[] = files.map((changedFile: string) => {
-    const file = path.join(monorepoPrefix, changedFile)
+  const results: DeltaResult[] = files.map((file: string) => {
     const fileInMain = eslintInMain.find(
-      f => cleanName(f.filePath) === (renames[file] ?? file)
+      f =>
+        path.join(monorepoPrefix, cleanName(f.filePath)) ===
+        (renames[file] ?? file)
     )
     const fileInBranch = eslintInBranch.find(
-      f => cleanName(f.filePath) === file
+      f => path.join(monorepoPrefix, cleanName(f.filePath)) === file
     )
     const main = fileInMain?.messages.filter(filterErrors).length ?? 0
     const branch = fileInBranch?.messages.filter(filterErrors).length ?? 0
+
+    core.info(
+      `eslintInMain.results[0].path: ${path.join(
+        monorepoPrefix,
+        eslintInMain[0].filePath
+      )}`
+    )
+    core.info(
+      `eslintInBranch.results[0].path: ${path.join(
+        monorepoPrefix,
+        eslintInBranch[0].filePath
+      )}`
+    )
 
     let offenses: DeltaOffense[] = []
 

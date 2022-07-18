@@ -59,12 +59,13 @@ export function rubocop(
   const rubocopInMain: Rubocop = JSON.parse(mainData)
   const rubocopInBranch: Rubocop = JSON.parse(branchData)
 
-  const results: DeltaResult[] = files.map((changedFile: string) => {
-    const file = path.join(monorepoPrefix, changedFile)
+  const results: DeltaResult[] = files.map((file: string) => {
     const fileInMain = rubocopInMain.files.find(
-      f => f.path === (renames[file] ?? file)
+      f => path.join(monorepoPrefix, f.path) === (renames[file] ?? file)
     )
-    const fileInBranch = rubocopInBranch.files.find(f => f.path === file)
+    const fileInBranch = rubocopInBranch.files.find(
+      f => path.join(monorepoPrefix, f.path) === file
+    )
     const main = fileInMain?.offenses.length ?? 0
     const branch = fileInBranch?.offenses.length ?? 0
 
