@@ -1,4 +1,5 @@
 import diffParser from 'git-diff-parser'
+import * as path from 'path'
 
 import {DeltaResult, DeltaOffense} from './main'
 import {changedFiles, intersection, lines, notEmpty} from './utils'
@@ -50,14 +51,16 @@ interface Summary {
 export function rubocop(
   diff: diffParser.Result,
   mainData: string,
-  branchData: string
+  branchData: string,
+  monorepoPrefix: string
 ): DeltaResult[] {
   const {files, renames} = changedFiles(diff)
 
   const rubocopInMain: Rubocop = JSON.parse(mainData)
   const rubocopInBranch: Rubocop = JSON.parse(branchData)
 
-  const results: DeltaResult[] = files.map((file: string) => {
+  const results: DeltaResult[] = files.map((changedFile: string) => {
+    const file = path.join(monorepoPrefix, changedFile)
     const fileInMain = rubocopInMain.files.find(
       f => f.path === (renames[file] ?? file)
     )

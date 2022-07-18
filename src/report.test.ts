@@ -11,7 +11,7 @@ test('return rubocop results', () => {
   const diff = diffParser(
     `diff --git a/foo.rb b/foo.rb\nnew file mode 100644\nindex 0000000..e69de29`
   )
-  const results = rubocop(diff, mainData, branchData)
+  const results = rubocop(diff, mainData, branchData, '')
   const delta = report(results)
 
   const table = [

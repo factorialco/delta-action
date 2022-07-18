@@ -12,7 +12,7 @@ test('return rubocop results', () => {
   const diff = diffParser(
     `diff --git a/foo.rb b/foo.rb\nnew file mode 100644\nindex 0000000..e69de29`
   )
-  const delta = rubocop(diff, mainData, branchData)
+  const delta = rubocop(diff, mainData, branchData, '')
 
   expect(delta).toStrictEqual([
     {file: 'foo.rb', main: 2, branch: 1, offenses: []}
@@ -25,7 +25,7 @@ test('return eslint results', () => {
   const diff = diffParser(
     `diff --git a/bar.js b/bar.js\nnew file mode 100644\nindex 0000000..e69de29`
   )
-  const delta = eslint(diff, mainData, branchData)
+  const delta = eslint(diff, mainData, branchData, '')
 
   expect(delta).toStrictEqual([
     {file: 'bar.js', main: 2, branch: 1, offenses: []}
@@ -38,7 +38,7 @@ test('return semgrep results', () => {
   const diff = diffParser(
     `diff --git a/baz.ts b/baz.ts\nnew file mode 100644\nindex 0000000..e69de29`
   )
-  const delta = semgrep(diff, mainData, branchData)
+  const delta = semgrep(diff, mainData, branchData, '')
 
   expect(delta).toStrictEqual([
     {file: 'baz.ts', main: 2, branch: 1, offenses: []}

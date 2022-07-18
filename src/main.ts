@@ -54,6 +54,7 @@ export async function run(): Promise<void> {
     const branch = core.getInput('branch')
     const headRef = core.getInput('head_ref')
     const forkpoint = core.getInput('forkpoint')
+    const monorepoPrefix = core.getInput('monorepo_prefix')
 
     core.info(
       `🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`
@@ -89,11 +90,11 @@ export async function run(): Promise<void> {
     let results = []
 
     if (engine === 'rubocop') {
-      results = rubocop(diff, mainData, branchData)
+      results = rubocop(diff, mainData, branchData, monorepoPrefix)
     } else if (engine === 'eslint') {
-      results = eslint(diff, mainData, branchData)
+      results = eslint(diff, mainData, branchData, monorepoPrefix)
     } else if (engine === 'semgrep') {
-      results = semgrep(diff, mainData, branchData)
+      results = semgrep(diff, mainData, branchData, monorepoPrefix)
     } else {
       throw new Error(`Unknown engine '${engine}'`)
     }

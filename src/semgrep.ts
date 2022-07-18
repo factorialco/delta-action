@@ -1,4 +1,5 @@
 import diffParser from 'git-diff-parser'
+import * as path from 'path'
 
 import {DeltaResult, DeltaOffense} from './main'
 import {changedFiles, intersection, lines, notEmpty} from './utils'
@@ -38,14 +39,16 @@ type Extra = {
 export function semgrep(
   diff: diffParser.Result,
   mainData: string,
-  branchData: string
+  branchData: string,
+  monorepoPrefix: string
 ): DeltaResult[] {
   const {files, renames} = changedFiles(diff)
 
   const semgrepInMain: Semgrep = JSON.parse(mainData)
   const semgrepInBranch: Semgrep = JSON.parse(branchData)
 
-  const results: DeltaResult[] = files.map((file: string) => {
+  const results: DeltaResult[] = files.map((changedFile: string) => {
+    const file = path.join(monorepoPrefix, changedFile)
     const fileInMain = semgrepInMain.results.filter(
       o => o.path === (renames[file] ?? file)
     )

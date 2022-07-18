@@ -2,23 +2,48 @@ require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
 /***/ 764:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.eslint = void 0;
+const path = __importStar(__nccwpck_require__(622));
 const utils_1 = __nccwpck_require__(918);
 const cleanName = (name) => {
     return name.replace(/\/runner\/_work\/([^/]*)\/([^/]*)\//, ''); // Remove runner context
 };
 const filterErrors = (message) => message.severity > 1;
-function eslint(diff, mainData, branchData) {
+function eslint(diff, mainData, branchData, monorepoPrefix) {
     const { files, renames } = (0, utils_1.changedFiles)(diff);
     const eslintInMain = JSON.parse(mainData);
     const eslintInBranch = JSON.parse(branchData);
-    const results = files.map((file) => {
+    const results = files.map((changedFile) => {
         var _a, _b, _c;
+        const file = path.join(monorepoPrefix, changedFile);
         const fileInMain = eslintInMain.find(f => { var _a; return cleanName(f.filePath) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
         const fileInBranch = eslintInBranch.find(f => cleanName(f.filePath) === file);
         const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.messages.filter(filterErrors).length) !== null && _a !== void 0 ? _a : 0;
@@ -132,6 +157,7 @@ function run() {
             const branch = core.getInput('branch');
             const headRef = core.getInput('head_ref');
             const forkpoint = core.getInput('forkpoint');
+            const monorepoPrefix = core.getInput('monorepo_prefix');
             core.info(`🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`);
             core.info(`📝 Checking file differences between '${headRef}' and '${forkpoint}'...`);
             const diffOutput = yield execShellCommand('git', [
@@ -157,13 +183,13 @@ function run() {
             }
             let results = [];
             if (engine === 'rubocop') {
-                results = (0, rubocop_1.rubocop)(diff, mainData, branchData);
+                results = (0, rubocop_1.rubocop)(diff, mainData, branchData, monorepoPrefix);
             }
             else if (engine === 'eslint') {
-                results = (0, eslint_1.eslint)(diff, mainData, branchData);
+                results = (0, eslint_1.eslint)(diff, mainData, branchData, monorepoPrefix);
             }
             else if (engine === 'semgrep') {
-                results = (0, semgrep_1.semgrep)(diff, mainData, branchData);
+                results = (0, semgrep_1.semgrep)(diff, mainData, branchData, monorepoPrefix);
             }
             else {
                 throw new Error(`Unknown engine '${engine}'`);
@@ -303,19 +329,44 @@ exports.report = report;
 /***/ }),
 
 /***/ 827:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.rubocop = void 0;
+const path = __importStar(__nccwpck_require__(622));
 const utils_1 = __nccwpck_require__(918);
-function rubocop(diff, mainData, branchData) {
+function rubocop(diff, mainData, branchData, monorepoPrefix) {
     const { files, renames } = (0, utils_1.changedFiles)(diff);
     const rubocopInMain = JSON.parse(mainData);
     const rubocopInBranch = JSON.parse(branchData);
-    const results = files.map((file) => {
+    const results = files.map((changedFile) => {
         var _a, _b, _c;
+        const file = path.join(monorepoPrefix, changedFile);
         const fileInMain = rubocopInMain.files.find(f => { var _a; return f.path === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
         const fileInBranch = rubocopInBranch.files.find(f => f.path === file);
         const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.offenses.length) !== null && _a !== void 0 ? _a : 0;
@@ -357,19 +408,44 @@ exports.rubocop = rubocop;
 /***/ }),
 
 /***/ 753:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.semgrep = void 0;
+const path = __importStar(__nccwpck_require__(622));
 const utils_1 = __nccwpck_require__(918);
-function semgrep(diff, mainData, branchData) {
+function semgrep(diff, mainData, branchData, monorepoPrefix) {
     const { files, renames } = (0, utils_1.changedFiles)(diff);
     const semgrepInMain = JSON.parse(mainData);
     const semgrepInBranch = JSON.parse(branchData);
-    const results = files.map((file) => {
+    const results = files.map((changedFile) => {
         var _a, _b, _c;
+        const file = path.join(monorepoPrefix, changedFile);
         const fileInMain = semgrepInMain.results.filter(o => { var _a; return o.path === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
         const fileInBranch = semgrepInBranch.results.filter(o => o.path === file);
         const main = (_a = fileInMain.length) !== null && _a !== void 0 ? _a : 0;
