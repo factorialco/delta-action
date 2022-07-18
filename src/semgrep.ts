@@ -1,3 +1,5 @@
+import * as core from '@actions/core'
+
 import diffParser from 'git-diff-parser'
 import * as path from 'path'
 
@@ -47,12 +49,27 @@ export function semgrep(
   const semgrepInMain: Semgrep = JSON.parse(mainData)
   const semgrepInBranch: Semgrep = JSON.parse(branchData)
 
+  core.info(`files: ${files.join(',')}`)
+  core.info(`renames: ${renames}`)
+
   const results: DeltaResult[] = files.map((changedFile: string) => {
+    core.info(`changedFile: ${changedFile}`)
+
     const file = path.join(monorepoPrefix, changedFile)
+    core.info(`file: ${file}`)
+
     const fileInMain = semgrepInMain.results.filter(
       o => o.path === (renames[file] ?? file)
     )
+
+    core.info(`semgrepInMain.results[0].path: ${semgrepInMain.results[0].path}`)
+
     const fileInBranch = semgrepInBranch.results.filter(o => o.path === file)
+
+    core.info(
+      `semgrepInBranch.results[0].path: ${semgrepInBranch.results[0].path}`
+    )
+
     const main = fileInMain.length ?? 0
     const branch = fileInBranch.length ?? 0
 

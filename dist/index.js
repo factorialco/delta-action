@@ -437,17 +437,24 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.semgrep = void 0;
+const core = __importStar(__nccwpck_require__(186));
 const path = __importStar(__nccwpck_require__(622));
 const utils_1 = __nccwpck_require__(918);
 function semgrep(diff, mainData, branchData, monorepoPrefix) {
     const { files, renames } = (0, utils_1.changedFiles)(diff);
     const semgrepInMain = JSON.parse(mainData);
     const semgrepInBranch = JSON.parse(branchData);
+    core.info(`files: ${files.join(',')}`);
+    core.info(`renames: ${renames}`);
     const results = files.map((changedFile) => {
         var _a, _b, _c;
+        core.info(`changedFile: ${changedFile}`);
         const file = path.join(monorepoPrefix, changedFile);
+        core.info(`file: ${file}`);
         const fileInMain = semgrepInMain.results.filter(o => { var _a; return o.path === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
+        core.info(`semgrepInMain.results[0].path: ${semgrepInMain.results[0].path}`);
         const fileInBranch = semgrepInBranch.results.filter(o => o.path === file);
+        core.info(`semgrepInBranch.results[0].path: ${semgrepInBranch.results[0].path}`);
         const main = (_a = fileInMain.length) !== null && _a !== void 0 ? _a : 0;
         const branch = (_b = fileInBranch.length) !== null && _b !== void 0 ? _b : 0;
         let offenses = [];
