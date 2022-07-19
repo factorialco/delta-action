@@ -1,1 +1,1 @@
-{"errors": [], "paths": {"scanned": ["baz.ts"]}, "results": [{"check_id": "dont_use_process_env", "path": "baz.ts"}]}
+{"errors": [], "paths": {"scanned": ["baz.ts"]}, "results": [{"check_id": "dont_use_process_env", "path": "baz.ts", "start": {"line": 2}}]}

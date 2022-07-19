@@ -17,6 +17,10 @@ inputs:
   forkpoint:
     required: true
     description: 'Commit id of your branch forkpoint.'
+  monorepo_prefix:
+    required: false
+    default: ''
+    description: 'Monorepo prefix for the analysis files in main and branch fields.'
 runs:
   using: 'node16'
   main: 'dist/index.js'

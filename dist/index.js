@@ -13,12 +13,13 @@ const cleanName = (name) => {
     return name.replace(/\/runner\/_work\/([^/]*)\/([^/]*)\//, ''); // Remove runner context
 };
 const filterErrors = (message) => message.severity > 1;
-function eslint(files, diff, mainData, branchData) {
+function eslint(diff, mainData, branchData) {
+    const { files, renames } = (0, utils_1.changedFiles)(diff);
     const eslintInMain = JSON.parse(mainData);
     const eslintInBranch = JSON.parse(branchData);
     const results = files.map((file) => {
         var _a, _b, _c;
-        const fileInMain = eslintInMain.find(f => cleanName(f.filePath) === file);
+        const fileInMain = eslintInMain.find(f => { var _a; return cleanName(f.filePath) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
         const fileInBranch = eslintInBranch.find(f => cleanName(f.filePath) === file);
         const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.messages.filter(filterErrors).length) !== null && _a !== void 0 ? _a : 0;
         const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.filter(filterErrors).length) !== null && _b !== void 0 ? _b : 0;
@@ -131,6 +132,7 @@ function run() {
             const branch = core.getInput('branch');
             const headRef = core.getInput('head_ref');
             const forkpoint = core.getInput('forkpoint');
+            const monorepoPrefix = core.getInput('monorepo_prefix');
             core.info(`🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`);
             core.info(`📝 Checking file differences between '${headRef}' and '${forkpoint}'...`);
             const diffOutput = yield execShellCommand('git', [
@@ -138,8 +140,6 @@ function run() {
                 `${forkpoint}..origin/${headRef}`
             ]);
             const diff = (0, git_diff_parser_1.default)(diffOutput);
-            const files = diff.commits.flatMap(commit => commit.files.map(file => file.name));
-            core.info(`📝 Changed files: ${files.join(', ')}`);
             let mainData;
             let branchData;
             try {
@@ -158,24 +158,24 @@ function run() {
             }
             let results = [];
             if (engine === 'rubocop') {
-                results = (0, rubocop_1.rubocop)(files, diff, mainData, branchData);
+                results = (0, rubocop_1.rubocop)(diff, mainData, branchData, monorepoPrefix);
             }
             else if (engine === 'eslint') {
-                results = (0, eslint_1.eslint)(files, diff, mainData, branchData);
+                results = (0, eslint_1.eslint)(diff, mainData, branchData);
             }
             else if (engine === 'semgrep') {
-                results = (0, semgrep_1.semgrep)(files, diff, mainData, branchData);
+                results = (0, semgrep_1.semgrep)(diff, mainData, branchData, monorepoPrefix);
             }
             else {
                 throw new Error(`Unknown engine '${engine}'`);
             }
-            const { aggregation, table, offenses } = (0, report_1.report)(results);
+            const { aggregation, table, offenses, analyzed } = (0, report_1.report)(results);
             yield core.summary
                 .addHeading(`${engine} results`)
                 .addRaw(`This is the list of all files analyzed by ${engine} and the BetterWorld™ result of each one.\n\n`)
                 .addRaw(`If the aggregation of all offenses is positive, this job will fail.\n\n`)
                 .addTable(table)
-                .addRaw(`${files.length} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n\n`)
+                .addRaw(`${analyzed} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n\n`)
                 .write();
             if (aggregation === 'worse') {
                 core.setFailed('🔥 This pull request is introducing new offenses to the code base. Try to not introduce them! Review the action summary or the shown GitHub annotations.');
@@ -254,6 +254,7 @@ const betterWorld = (main, branch) => {
     return 'better';
 };
 function report(results) {
+    const analyzed = results.length;
     const tableResults = results
         .map(result => {
         const status = betterWorld(result.main, result.branch);
@@ -293,7 +294,8 @@ function report(results) {
     return {
         aggregation,
         table,
-        offenses
+        offenses,
+        analyzed
     };
 }
 exports.report = report;
@@ -302,20 +304,45 @@ exports.report = report;
 /***/ }),
 
 /***/ 827:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.rubocop = void 0;
+const path = __importStar(__nccwpck_require__(622));
 const utils_1 = __nccwpck_require__(918);
-function rubocop(files, diff, mainData, branchData) {
+function rubocop(diff, mainData, branchData, monorepoPrefix) {
+    const { files, renames } = (0, utils_1.changedFiles)(diff);
     const rubocopInMain = JSON.parse(mainData);
     const rubocopInBranch = JSON.parse(branchData);
     const results = files.map((file) => {
         var _a, _b, _c;
-        const fileInMain = rubocopInMain.files.find(f => f.path === file);
-        const fileInBranch = rubocopInBranch.files.find(f => f.path === file);
+        const fileInMain = rubocopInMain.files.find(f => { var _a; return path.join(monorepoPrefix, f.path) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
+        const fileInBranch = rubocopInBranch.files.find(f => path.join(monorepoPrefix, f.path) === file);
         const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.offenses.length) !== null && _a !== void 0 ? _a : 0;
         const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.offenses.length) !== null && _b !== void 0 ? _b : 0;
         let offenses = [];
@@ -355,20 +382,45 @@ exports.rubocop = rubocop;
 /***/ }),
 
 /***/ 753:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.semgrep = void 0;
+const path = __importStar(__nccwpck_require__(622));
 const utils_1 = __nccwpck_require__(918);
-function semgrep(files, diff, mainData, branchData) {
+function semgrep(diff, mainData, branchData, monorepoPrefix) {
+    const { files, renames } = (0, utils_1.changedFiles)(diff);
     const semgrepInMain = JSON.parse(mainData);
     const semgrepInBranch = JSON.parse(branchData);
     const results = files.map((file) => {
         var _a, _b, _c;
-        const fileInMain = semgrepInMain.results.filter(o => o.path === file);
-        const fileInBranch = semgrepInBranch.results.filter(o => o.path === file);
+        const fileInMain = semgrepInMain.results.filter(o => { var _a; return path.join(monorepoPrefix, o.path) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
+        const fileInBranch = semgrepInBranch.results.filter(o => path.join(monorepoPrefix, o.path) === file);
         const main = (_a = fileInMain.length) !== null && _a !== void 0 ? _a : 0;
         const branch = (_b = fileInBranch.length) !== null && _b !== void 0 ? _b : 0;
         let offenses = [];
@@ -413,7 +465,7 @@ exports.semgrep = semgrep;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.intersection = exports.lines = exports.notEmpty = void 0;
+exports.changedFiles = exports.intersection = exports.lines = exports.notEmpty = void 0;
 function notEmpty(value) {
     return value !== null && value !== undefined;
 }
@@ -433,6 +485,19 @@ const lines = (diff, diffFile) => {
 exports.lines = lines;
 const intersection = (array1, array2) => array1.filter(value => array2.includes(value));
 exports.intersection = intersection;
+const changedFiles = (diff) => {
+    const files = diff.commits.flatMap(commit => commit.files.map(file => file.name));
+    const renames = diff.commits.flatMap(commit => {
+        return commit.files
+            .filter(file => file.renamed)
+            .map(file => [file.name, file.oldName]);
+    });
+    return {
+        files,
+        renames: Object.fromEntries(renames)
+    };
+};
+exports.changedFiles = changedFiles;
 
 
 /***/ }),

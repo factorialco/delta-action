@@ -54,6 +54,7 @@ export async function run(): Promise<void> {
     const branch = core.getInput('branch')
     const headRef = core.getInput('head_ref')
     const forkpoint = core.getInput('forkpoint')
+    const monorepoPrefix = core.getInput('monorepo_prefix')
 
     core.info(
       `🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`
@@ -68,11 +69,6 @@ export async function run(): Promise<void> {
       `${forkpoint}..origin/${headRef}`
     ])
     const diff = diffParser(diffOutput)
-    const files = diff.commits.flatMap(commit =>
-      commit.files.map(file => file.name)
-    )
-
-    core.info(`📝 Changed files: ${files.join(', ')}`)
 
     let mainData
     let branchData
@@ -94,16 +90,16 @@ export async function run(): Promise<void> {
     let results = []
 
     if (engine === 'rubocop') {
-      results = rubocop(files, diff, mainData, branchData)
+      results = rubocop(diff, mainData, branchData, monorepoPrefix)
     } else if (engine === 'eslint') {
-      results = eslint(files, diff, mainData, branchData)
+      results = eslint(diff, mainData, branchData)
     } else if (engine === 'semgrep') {
-      results = semgrep(files, diff, mainData, branchData)
+      results = semgrep(diff, mainData, branchData, monorepoPrefix)
     } else {
       throw new Error(`Unknown engine '${engine}'`)
     }
 
-    const {aggregation, table, offenses} = report(results)
+    const {aggregation, table, offenses, analyzed} = report(results)
 
     await core.summary
       .addHeading(`${engine} results`)
@@ -115,7 +111,7 @@ export async function run(): Promise<void> {
       )
       .addTable(table)
       .addRaw(
-        `${files.length} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n\n`
+        `${analyzed} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n\n`
       )
       .write()
 
