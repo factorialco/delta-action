@@ -92,7 +92,7 @@ export async function run(): Promise<void> {
     if (engine === 'rubocop') {
       results = rubocop(diff, mainData, branchData, monorepoPrefix)
     } else if (engine === 'eslint') {
-      results = eslint(diff, mainData, branchData, monorepoPrefix)
+      results = eslint(diff, mainData, branchData)
     } else if (engine === 'semgrep') {
       results = semgrep(diff, mainData, branchData, monorepoPrefix)
     } else {

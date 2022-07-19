@@ -25,7 +25,7 @@ test('return eslint results', () => {
   const diff = diffParser(
     `diff --git a/bar.js b/bar.js\nnew file mode 100644\nindex 0000000..e69de29`
   )
-  const delta = eslint(diff, mainData, branchData, '')
+  const delta = eslint(diff, mainData, branchData)
 
   expect(delta).toStrictEqual([
     {file: 'bar.js', main: 2, branch: 1, offenses: []}
