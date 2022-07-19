@@ -1,5 +1,3 @@
-import * as core from '@actions/core'
-
 import diffParser from 'git-diff-parser'
 import * as path from 'path'
 
@@ -54,22 +52,8 @@ export function semgrep(
       o => path.join(monorepoPrefix, o.path) === (renames[file] ?? file)
     )
 
-    core.info(
-      `semgrepInMain.results[0].path: ${path.join(
-        monorepoPrefix,
-        semgrepInMain.results[0].path
-      )}`
-    )
-
     const fileInBranch = semgrepInBranch.results.filter(
       o => path.join(monorepoPrefix, o.path) === file
-    )
-
-    core.info(
-      `semgrepInBranch.results[0].path: ${path.join(
-        monorepoPrefix,
-        semgrepInBranch.results[0].path
-      )}`
     )
 
     const main = fileInMain.length ?? 0
