@@ -32,7 +32,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.eslint = void 0;
 const core = __importStar(__nccwpck_require__(186));
-const path = __importStar(__nccwpck_require__(622));
 const utils_1 = __nccwpck_require__(918);
 const cleanName = (name) => {
     return name.replace(/\/runner\/_work\/([^/]*)\/([^/]*)\//, ''); // Remove runner context
@@ -42,14 +41,17 @@ function eslint(diff, mainData, branchData, monorepoPrefix) {
     const { files, renames } = (0, utils_1.changedFiles)(diff);
     const eslintInMain = JSON.parse(mainData);
     const eslintInBranch = JSON.parse(branchData);
+    core.info(monorepoPrefix);
     const results = files.map((file) => {
         var _a, _b, _c;
-        const fileInMain = eslintInMain.find(f => { var _a; return path.join(monorepoPrefix, cleanName(f.filePath)) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
-        const fileInBranch = eslintInBranch.find(f => path.join(monorepoPrefix, cleanName(f.filePath)) === file);
+        const fileInMain = eslintInMain.find(f => { var _a; return cleanName(f.filePath) === ((_a = renames[file]) !== null && _a !== void 0 ? _a : file); });
+        const fileInBranch = eslintInBranch.find(f => cleanName(f.filePath) === file);
         const main = (_a = fileInMain === null || fileInMain === void 0 ? void 0 : fileInMain.messages.filter(filterErrors).length) !== null && _a !== void 0 ? _a : 0;
         const branch = (_b = fileInBranch === null || fileInBranch === void 0 ? void 0 : fileInBranch.messages.filter(filterErrors).length) !== null && _b !== void 0 ? _b : 0;
-        core.info(`eslintInMain.results[0].path: ${path.join(monorepoPrefix, eslintInMain[0].filePath)}`);
-        core.info(`eslintInBranch.results[0].path: ${path.join(monorepoPrefix, eslintInBranch[0].filePath)}`);
+        core.info(`file: ${file}`);
+        core.info(`eslintInMain.results[0].path: ${eslintInMain[0].filePath}`);
+        core.info(`file: ${file}`);
+        core.info(`eslintInBranch.results[0].path: ${eslintInBranch[0].filePath}`);
         let offenses = [];
         if (main < branch) {
             const diffLines = (0, utils_1.lines)(diff, file);
