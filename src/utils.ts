@@ -11,9 +11,7 @@ export const lines = (diff: diffParser.Result, diffFile: string): number[] => {
     return commit.files.flatMap(file => {
       if (diffFile !== file.name) return []
 
-      return file.lines
-        .map(line => (line.type !== 'deleted' ? line.ln1 : null))
-        .filter(notEmpty)
+      return file.lines.map(line => line.ln1).filter(notEmpty)
     })
   })
 

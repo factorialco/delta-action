@@ -476,7 +476,7 @@ const lines = (diff, diffFile) => {
             if (diffFile !== file.name)
                 return [];
             return file.lines
-                .map(line => (line.type !== 'deleted' ? line.ln1 : null))
+                .map(line => (line.ln1))
                 .filter(notEmpty);
         });
     });
