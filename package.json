@@ -1,6 +1,6 @@
 {
   "name": "delta-action",
-  "version": "4.1.0",
+  "version": "next-gen-ci",
   "description": "Compute delta offenses for your pull requests",
   "main": "lib/main.js",
   "scripts": {
