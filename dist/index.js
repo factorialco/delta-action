@@ -127,85 +127,86 @@ const execShellCommand = (cmd, args) => __awaiter(void 0, void 0, void 0, functi
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const engine = core.getInput('engine');
-            const main = core.getInput('main');
-            const branch = core.getInput('branch');
+            const engines = ['rubocop', 'eslint', 'semgrep'];
             const headRef = core.getInput('head_ref');
             const forkpoint = core.getInput('forkpoint');
-            const monorepoPrefix = core.getInput('monorepo_prefix');
-            core.info(`🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`);
-            core.info(`📝 Checking file differences between '${headRef}' and '${forkpoint}'...`);
-            const diffOutput = yield execShellCommand('git', [
-                'diff',
-                `${forkpoint}..origin/${headRef}`
-            ]);
-            const diff = (0, git_diff_parser_1.default)(diffOutput);
-            let mainData;
-            let branchData;
-            try {
-                mainData = fs.readFileSync(main, 'utf8');
-            }
-            catch (err) {
-                core.info('⚠️  Unable to find main branch file!');
-                return;
-            }
-            try {
-                branchData = fs.readFileSync(branch, 'utf8');
-            }
-            catch (err) {
-                core.setFailed('⛔ Unable to find branch file!');
-                return;
-            }
-            let results = [];
-            if (engine === 'rubocop') {
-                results = (0, rubocop_1.rubocop)(diff, mainData, branchData, monorepoPrefix);
-            }
-            else if (engine === 'eslint') {
-                results = (0, eslint_1.eslint)(diff, mainData, branchData);
-            }
-            else if (engine === 'semgrep') {
-                results = (0, semgrep_1.semgrep)(diff, mainData, branchData, monorepoPrefix);
-            }
-            else {
-                throw new Error(`Unknown engine '${engine}'`);
-            }
-            const { aggregation, table, offenses, analyzed } = (0, report_1.report)(results);
-            yield core.summary
-                .addHeading(`${engine} results`)
-                .addRaw(`This is the list of all files analyzed by ${engine} and the BetterWorld™ result of each one.\n\n`)
-                .addRaw(`If the aggregation of all offenses is positive, this job will fail.\n\n`)
-                .addTable(table)
-                .addRaw(`${analyzed} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n\n`)
-                .write();
-            if (aggregation === 'worse') {
-                core.setFailed('🔥 This pull request is introducing new offenses to the code base. Try to not introduce them! Review the action summary or the shown GitHub annotations.');
-                for (const offense of offenses) {
-                    core.warning(offense.message, {
-                        file: offense.file,
-                        title: offense.title,
-                        startLine: offense.startLine,
-                        endLine: offense.endLine,
-                        startColumn: offense.startColumn,
-                        endColumn: offense.endColumn
-                    });
+            for (const engine of engines) {
+                const main = `./${engine}.main.json`;
+                const branch = `./${engine}.output.json`;
+                core.info(`🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`);
+                core.info(`📝 Checking file differences between '${headRef}' and '${forkpoint}'...`);
+                const diffOutput = yield execShellCommand('git', [
+                    'diff',
+                    `${forkpoint}..origin/${headRef}`
+                ]);
+                const diff = (0, git_diff_parser_1.default)(diffOutput);
+                let mainData;
+                let branchData;
+                try {
+                    mainData = fs.readFileSync(main, 'utf8');
                 }
-                const details = offenses
-                    .map(offense => `${offense.file}:${offense.startLine} ${offense.title}`)
-                    .join('\n');
+                catch (err) {
+                    core.info('⚠️  Unable to find main branch file!');
+                    return;
+                }
+                try {
+                    branchData = fs.readFileSync(branch, 'utf8');
+                }
+                catch (err) {
+                    core.setFailed('⛔ Unable to find branch file!');
+                    return;
+                }
+                let results = [];
+                if (engine === 'rubocop') {
+                    results = (0, rubocop_1.rubocop)(diff, mainData, branchData, 'backend');
+                }
+                else if (engine === 'eslint') {
+                    results = (0, eslint_1.eslint)(diff, mainData, branchData);
+                }
+                else if (engine === 'semgrep') {
+                    results = (0, semgrep_1.semgrep)(diff, mainData, branchData, 'backend');
+                }
+                else {
+                    throw new Error(`Unknown engine '${engine}'`);
+                }
+                const { aggregation, table, offenses, analyzed } = (0, report_1.report)(results);
                 yield core.summary
-                    .addDetails('Offenses details:', `<pre>${details}</pre>`)
+                    .addHeading(`${engine} results`)
+                    .addRaw(`This is the list of all files analyzed by ${engine} and the BetterWorld™ result of each one.\n\n`)
+                    .addRaw(`If the aggregation of all offenses is positive, this job will fail.\n\n`)
+                    .addTable(table)
+                    .addRaw(`${analyzed} files were analyzed in this report. If a file doesn't appear in this list it means it was irrelevant to the BetterWorld™ score.\n\n`)
                     .write();
+                if (aggregation === 'worse') {
+                    core.setFailed('🔥 This pull request is introducing new offenses to the code base. Try to not introduce them! Review the action summary or the shown GitHub annotations.');
+                    for (const offense of offenses) {
+                        core.warning(offense.message, {
+                            file: offense.file,
+                            title: offense.title,
+                            startLine: offense.startLine,
+                            endLine: offense.endLine,
+                            startColumn: offense.startColumn,
+                            endColumn: offense.endColumn
+                        });
+                    }
+                    const details = offenses
+                        .map(offense => `${offense.file}:${offense.startLine} ${offense.title}`)
+                        .join('\n');
+                    yield core.summary
+                        .addDetails('Offenses details:', `<pre>${details}</pre>`)
+                        .write();
+                }
+                else if (aggregation === 'neutral') {
+                    core.info('🧘 Lost an opportunity to improve this world!');
+                }
+                else if (aggregation === 'awesome') {
+                    core.info('✨ Awesome contribution! Thank you so much putting effort to make this world a better place!');
+                }
+                else {
+                    core.info('🌿 Thank you so much! Better World!');
+                }
+                core.setOutput('aggregation', aggregation);
             }
-            else if (aggregation === 'neutral') {
-                core.info('🧘 Lost an opportunity to improve this world!');
-            }
-            else if (aggregation === 'awesome') {
-                core.info('✨ Awesome contribution! Thank you so much putting effort to make this world a better place!');
-            }
-            else {
-                core.info('🌿 Thank you so much! Better World!');
-            }
-            core.setOutput('aggregation', aggregation);
         }
         catch (error) {
             if (error instanceof Error) {
