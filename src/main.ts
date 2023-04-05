@@ -2,11 +2,15 @@ import * as core from '@actions/core'
 import * as fs from 'fs'
 import {spawn} from 'child_process'
 import diffParser from 'git-diff-parser'
+import { S3 } from "@aws-sdk/client-s3"
 
 import {rubocop} from './rubocop'
 import {eslint} from './eslint'
 import {semgrep} from './semgrep'
 import {report} from './report'
+
+export AWS_GITHUB_ACTIONS_DEVELOPMENT_CACHE_BUCKET='gh-actions-development-cache'
+
 
 export interface DeltaResult {
   file: string
@@ -47,6 +51,28 @@ const execShellCommand = async (
   })
 }
 
+function getS3DeltaFile(service, engine, ref) {
+  const s3 = new S3({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION,
+  });
+
+  const params = {
+    Bucket: AWS_GITHUB_ACTIONS_DEVELOPMENT_CACHE_BUCKET,
+
+    Key: `${service}/delta/${engine}/main-${ref}.json`,
+  };
+
+  s3.getObject(params, function (err, data) {
+    if (err) {
+      console.log(err, err.stack);
+    } else {
+      console.log(data);
+    }
+  });
+}
+
 export async function run(): Promise<void> {
   try {
     const engines = ['rubocop', 'eslint', 'semgrep']
@@ -54,11 +80,8 @@ export async function run(): Promise<void> {
     const forkpoint = core.getInput('forkpoint')
 
     for (const engine of engines) {
-      const main = `./${engine}.main.json`
-      const branch = `./${engine}.output.json`
-
       core.info(
-        `🔎 Executing delta for '${engine}' between '${main}' and '${branch}'...`
+        `🔎 Executing delta for '${engine}' between '${headRef}' and '${forkpoint}'...`
       )
 
       core.info(
@@ -74,15 +97,17 @@ export async function run(): Promise<void> {
       let mainData
       let branchData
 
+      const service = engine === 'eslint' ? 'frontend' : 'backend'
+
       try {
-        mainData = fs.readFileSync(main, 'utf8')
+        mainData = await getS3DeltaFile(service, engine, forkpoint)
       } catch (err) {
         core.info('⚠️  Unable to find main branch file!')
         return
       }
 
       try {
-        branchData = fs.readFileSync(branch, 'utf8')
+        branchData = await getS3DeltaFile(service, engine, headRef)
       } catch (err) {
         core.setFailed('⛔ Unable to find branch file!')
         return
@@ -91,11 +116,11 @@ export async function run(): Promise<void> {
       let results = []
 
       if (engine === 'rubocop') {
-        results = rubocop(diff, mainData, branchData, 'backend')
+        results = rubocop(diff, mainData, branchData, service)
       } else if (engine === 'eslint') {
         results = eslint(diff, mainData, branchData)
       } else if (engine === 'semgrep') {
-        results = semgrep(diff, mainData, branchData, 'backend')
+        results = semgrep(diff, mainData, branchData, service)
       } else {
         throw new Error(`Unknown engine '${engine}'`)
       }
