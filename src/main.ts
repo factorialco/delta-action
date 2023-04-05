@@ -1,16 +1,15 @@
 import * as core from '@actions/core'
-import * as fs from 'fs'
 import {spawn} from 'child_process'
 import diffParser from 'git-diff-parser'
-import { S3 } from "@aws-sdk/client-s3"
+import {S3} from '@aws-sdk/client-s3'
 
 import {rubocop} from './rubocop'
 import {eslint} from './eslint'
 import {semgrep} from './semgrep'
 import {report} from './report'
 
-export AWS_GITHUB_ACTIONS_DEVELOPMENT_CACHE_BUCKET='gh-actions-development-cache'
-
+const AWS_GITHUB_ACTIONS_DEVELOPMENT_CACHE_BUCKET =
+  'gh-actions-development-cache'
 
 export interface DeltaResult {
   file: string
@@ -51,26 +50,38 @@ const execShellCommand = async (
   })
 }
 
-function getS3DeltaFile(service, engine, ref) {
-  const s3 = new S3({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION,
-  });
+async function getS3DeltaFile(
+  service: 'backend' | 'frontend',
+  engine: String,
+  ref: String
+): Promise<string> {
+  if (
+    !process.env.AWS_ACCESS_KEY_ID ||
+    !process.env.AWS_SECRET_ACCESS_KEY ||
+    !process.env.AWS_REGION
+  ) {
+    throw new Error('Missing AWS credentials')
+  }
+
+  const s3 = new S3({})
 
   const params = {
     Bucket: AWS_GITHUB_ACTIONS_DEVELOPMENT_CACHE_BUCKET,
+    Key: `${service}/delta/${engine}/main-${ref}.json`
+  }
 
-    Key: `${service}/delta/${engine}/main-${ref}.json`,
-  };
+  try {
+    const fileObj = await s3.getObject(params)
 
-  s3.getObject(params, function (err, data) {
-    if (err) {
-      console.log(err, err.stack);
-    } else {
-      console.log(data);
+    if (!fileObj.Body) {
+      throw new Error('File not found')
     }
-  });
+
+    const data = fileObj.Body.toString()
+    return data
+  } catch (err) {
+    throw new Error(`Unable to get file from S3: ${err}`)
+  }
 }
 
 export async function run(): Promise<void> {
