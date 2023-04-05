@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import {spawn} from 'child_process'
 import diffParser from 'git-diff-parser'
 import {S3} from '@aws-sdk/client-s3'
+import fs from 'fs'
 
 import {rubocop} from './rubocop'
 import {eslint} from './eslint'
@@ -118,7 +119,13 @@ export async function run(): Promise<void> {
       }
 
       try {
-        branchData = await getS3DeltaFile(service, engine, headRef)
+        // For rubocop is ../artifacts/rubocop/backend.json
+        // for semgrep is ../artifacts/semgrep/backend.json
+        // ...
+        branchData = fs.readFileSync(
+          `./artifacts/${engine}/${service}.json`,
+          'utf8'
+        )
       } catch (err) {
         core.setFailed('⛔ Unable to find branch file!')
         return

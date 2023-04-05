@@ -145,6 +145,7 @@ const core = __importStar(__nccwpck_require__(42186));
 const child_process_1 = __nccwpck_require__(63129);
 const git_diff_parser_1 = __importDefault(__nccwpck_require__(95360));
 const client_s3_1 = __nccwpck_require__(19250);
+const fs_1 = __importDefault(__nccwpck_require__(35747));
 const rubocop_1 = __nccwpck_require__(99827);
 const eslint_1 = __nccwpck_require__(35764);
 const semgrep_1 = __nccwpck_require__(90753);
@@ -215,7 +216,10 @@ function run() {
                     return;
                 }
                 try {
-                    branchData = yield getS3DeltaFile(service, engine, headRef);
+                    // For rubocop is ../artifacts/rubocop/backend.json
+                    // for semgrep is ../artifacts/semgrep/backend.json
+                    // ...
+                    branchData = fs_1.default.readFileSync(`./artifacts/${engine}/${service}.json`, 'utf8');
                 }
                 catch (err) {
                     core.setFailed('⛔ Unable to find branch file!');
